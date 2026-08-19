@@ -12,7 +12,9 @@
 
 이 저장소는 **공개 배포용 반출본**이다. 정본(원본 스킬)은 저자의 비공개 학교 업무 폴더 `.claude/skills`에 있으며, 저자가 실사용하면서 그쪽을 먼저 갱신한다. 이 저장소는 정본에서 개인·학교 식별 정보를 제거(sanitization)한 뒤 주기적으로 동기화한다.
 
-- 스킬 3종: `나이스-업무자동화/` · `K-에듀파인-업무자동화/` · `교데통-제출/`
+- 스킬 3종: `neis-automation/`(나이스) · `k-edufine-automation/`(K-에듀파인) · `kyodetong-submit/`(교데통)
+- 스킬 `name:`과 폴더명은 ASCII를 쓴다. **한국어 이름은 `npx skills add` 설치 시 슬러그화로 깨져
+  `unnamed-skill` 충돌·덮어쓰기가 난다**(실측). 한국어 트리거는 description에 담는다.
 - 설치 경로: `npx skills add Engccer/school-work-automation -g`
 - 라이선스: MIT
 
