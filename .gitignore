@@ -3,3 +3,4 @@ Thumbs.db
 .DS_Store
 *.local.md
 __pycache__/
+*.local.py
