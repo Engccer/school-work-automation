@@ -4,7 +4,7 @@ license: MIT
 description: >-
   교내 메신저 쿨메신저(CoolMessenger)로 이미 주고받은 메시지를 다룬다. 로컬 SQLite DB를 읽어 회신을 수합하고, 첨부파일을 일괄로 내려받아 정리하며, 회신·새 메시지 작성 창을 채운다(보내기는 사용자 확인 뒤). 다음 요청에 사용한다. "선생님들 답장 왔는지 봐 줘", "회신 취합해 줘", 대상자 명단과 대조한 미회신자 파악, "첨부파일 다 받아서 정리해 줘", 보낸·받은 메시지 검색·내보내기, 회신 보내기 준비, 지난번과 같은 받는사람에게 새 메시지 보내기([전체 회신]으로 받는사람 재사용). 보낼 문안을 새로 쓰는 일은 이 스킬의 범위 밖이다. CoolMessenger, read replies, reply tracking, collect attachments, message database.
 metadata:
-  version: "1.2.1"
+  version: "1.2.2"
 ---
 
 # 쿨메신저 자동화

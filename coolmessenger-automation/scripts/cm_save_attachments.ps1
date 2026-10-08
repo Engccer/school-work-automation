@@ -14,6 +14,9 @@ param(
     [int]$DownloadTimeoutSec = 25
 )
 
+# 상대 경로 -Dest는 Split-Path -Qualifier가 실패해 드라이브 루트 탐색이 깨지므로 먼저 절대 경로로 바꾼다
+$Dest = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Dest)
+
 . "$PSScriptRoot\cm_lib.ps1"
 
 if (-not $WatchDirs) {
