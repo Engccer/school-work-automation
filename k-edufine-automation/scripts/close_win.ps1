@@ -1,13 +1,26 @@
 <#
-  제목 부분일치로 찾은 최상위 창에 WM_CLOSE 를 보낸다.
+  제목으로 찾은 최상위 창에 WM_CLOSE 를 보낸다. 기본은 부분일치, -Exact 면 제목 완전일치.
   사용: pwsh -NoProfile -File close_win.ps1 -TitleLike "-- 웹 페이지 대화 상자" -Exact
-  주의: 제목이 비슷한 창을 잘못 닫지 않도록 -List 로 먼저 확인할 것.
+  주의: 제목이 비슷한 창을 잘못 닫지 않도록 -List 로 먼저 확인하고 -Index 로 고를 것.
+        -Index 는 그때의 -TitleLike·-Exact 로 거른 목록 안 순번이고 부를 때마다 다시 센다.
+        -List 는 닫을 때와 같은 -TitleLike·-Exact 로 돌리고, 하나 닫을 때마다 다시 -List 한다.
 #>
 param(
   [string]$TitleLike = "",
   [int]$Index = 0,
-  [switch]$List
+  [switch]$List,
+  [switch]$Exact
 )
+
+# 제목 목록에서 대상 후보의 인덱스를 고른다(-Exact 면 완전일치, 아니면 부분일치)
+function Select-WindowIndex([string[]]$Titles, [string]$TitleLike, [switch]$Exact) {
+  for ($i = 0; $i -lt $Titles.Count; $i++) {
+    if ($Exact) { if ($Titles[$i] -ceq $TitleLike) { $i } }
+    elseif ($Titles[$i] -like "*$TitleLike*") { $i }
+  }
+}
+
+if ($MyInvocation.InvocationName -eq '.') { return }   # 시험용 점-소싱: 함수만 불러오고 창은 건드리지 않는다
 
 $sig = @"
 using System;
@@ -41,8 +54,7 @@ public class CloseW {
 Add-Type -TypeDefinition $sig
 
 [CloseW]::Scan()
-$c = @()
-for ($i = 0; $i -lt [CloseW]::H.Count; $i++) { if ([CloseW]::T[$i] -like "*$TitleLike*") { $c += $i } }
+$c = @(Select-WindowIndex -Titles ([CloseW]::T.ToArray()) -TitleLike $TitleLike -Exact:$Exact)
 if ($c.Count -eq 0) { "ERR: 창 없음 ($TitleLike)"; exit 1 }
 
 if ($List) {

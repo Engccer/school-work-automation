@@ -1,8 +1,8 @@
 # 받은 메시지에 회신 창을 열고 본문을 채운다. 기본은 '채우기까지'이고,
 # -Send 를 줘야 실제로 [보내기]를 누른다.
 #
-#   .\cm_reply.ps1 -Sender '홍길동' -BodyFile 'C:\...\body.txt'          # 채우기만
-#   .\cm_reply.ps1 -Sender '홍길동' -BodyFile 'C:\...\body.txt' -Send    # 발송까지
+#   pwsh -File scripts/cm_reply.ps1 -Sender '홍길동' -BodyFile 'C:\...\body.txt'          # 채우기만
+#   pwsh -File scripts/cm_reply.ps1 -Sender '홍길동' -BodyFile 'C:\...\body.txt' -Send    # 발송까지
 #
 # 본문은 CEF(크롬) 에디터라 타이핑 대신 클립보드 붙여넣기를 쓴다.
 # 붙여넣기는 캐럿 위치에 들어가므로 Ctrl+Home으로 맨 앞에 올린 뒤 붙인다.
@@ -84,8 +84,4 @@ if (-not $Send) {
 $send = Find-CMControl -Parent $compose -Class 'Button' -TextLike '보내기*'
 [void][CM]::Msg($send, 0x00F5, [IntPtr]0, [IntPtr]0)
 Start-Sleep -Seconds 4
-if ([CM]::IsWindow($compose)) {
-    Write-Host '주의: 회신 창이 아직 열려 있습니다. 발송 여부를 확인하세요.'
-} else {
-    Write-Host "발송 완료: $short 선생님"
-}
+Write-Host (Get-CMSendNotice -Compose $compose -Name $short)

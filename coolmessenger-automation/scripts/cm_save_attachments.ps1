@@ -1,10 +1,10 @@
 # 쿨메신저 받은메시지의 첨부파일을 골라서 일괄로 내려받아 지정 폴더에 모은다.
 #
-#   .\cm_save_attachments.ps1 -Match '*체크리스트*' -Dest '.\수합\체크리스트'
-#   .\cm_save_attachments.ps1 -Match '*체크리스트*' -Dest '...' -WhatIf   # 대상만 확인
+#   pwsh -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest "$env:USERPROFILE\Documents\수합\체크리스트"
+#   pwsh -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest '...' -WhatIf   # 대상만 확인
 #
-# 저장 위치는 쿨메신저가 마지막으로 쓴 폴더로 고정돼 있고 선택할 수 없다.
-# 그래서 저장된 파일을 찾아 -Dest로 옮기는 방식으로 동작한다.
+# 저장 위치는 레지스트리 DownPath로 정해져 있고 선택할 수 없다.
+# 그래서 저장된 파일을 파일명으로 찾아 -Dest로 옮기는 방식으로 동작한다.
 
 [CmdletBinding(SupportsShouldProcess)]
 param(
@@ -23,7 +23,12 @@ if (-not $WatchDirs) {
         "$env:USERPROFILE\OneDrive\Desktop", $Dest, (Split-Path $Dest -Parent)
     )
 }
-# 쿨메신저가 마지막에 쓴 폴더도 후보에 넣는다(저장 후 탐색기가 그 폴더로 열릴 때가 있다).
+# 실제 저장 위치는 레지스트리 DownPath다. 이것이 빠져 있으면 파일을 저장해 놓고도 못 찾아
+# 전부 '저장안됨'으로 끝난다.
+try {
+    $WatchDirs = @((Get-ItemProperty 'HKCU:\Software\Jiransoft\CoolMsg50\Option\GetFile' -ErrorAction Stop).DownPath) + $WatchDirs
+} catch {}
+# 열린 탐색기 창의 폴더도 폴백 후보에 넣는다(저장 후 탐색기가 저장 폴더로 열릴 때가 있다).
 foreach ($w in (New-Object -ComObject Shell.Application).Windows()) {
     try { $WatchDirs += $w.Document.Folder.Self.Path } catch {}
 }
@@ -51,9 +56,6 @@ function Find-SavedFile {
 if (-not (Test-Path $Dest)) { New-Item -ItemType Directory -Force $Dest | Out-Null }
 
 $msgWin = Open-CMArchive
-if ($msgWin -eq [IntPtr]::Zero) {
-    throw '메시지 관리함을 열지 못했습니다.'
-}
 $list = Find-CMControl -Parent $msgWin -Class 'SysListView32' -TextLike '메시지 리스트*'
 $save = Find-CMControl -Parent $msgWin -Class 'Button' -TextLike '모든파일 저장*'
 
@@ -91,7 +93,7 @@ foreach ($t in $targets) {
     $saved = Find-SavedFile -FileName $file -Since $t0
 
     if (-not $saved) {
-        $why = if ($state -eq 'STALLED') { '전송멈춤(보낸분 PC 응답없음)' } else { '저장안됨' }
+        $why = if ($state -eq 'STALLED') { '전송멈춤(관리함에서 재시도)' } else { '저장안됨' }
         Write-Host "  FAIL  $sender — $why"
         $result += [pscustomobject]@{ 보낸사람=$sender; 파일=$file; 결과=$why }
         continue

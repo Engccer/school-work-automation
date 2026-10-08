@@ -12,7 +12,7 @@
   python cm_export.py --sent --since 2026-09-01 --format json
   python cm_export.py --since 2026-09-21 --contains 체크리스트 --full
 """
-import argparse, csv, glob, io, json, os, re, shutil, sqlite3, sys, tempfile
+import argparse, csv, glob, io, json, os, shutil, sqlite3, sys, tempfile
 
 DB_DIR = os.path.join(os.environ.get("LOCALAPPDATA", ""), "CoolMessenger", "Memo")
 
@@ -24,12 +24,11 @@ def find_db():
     return max(hits, key=os.path.getsize)
 
 
-def copy_db(src):
-    """앱이 잠근 파일이라 FileShare.ReadWrite 상당의 공유 읽기로 복사한다.
+def copy_db(src, tmp):
+    """앱이 잠근 파일이라 FileShare.ReadWrite 상당의 공유 읽기로 tmp 폴더에 복사한다.
 
     WAL 모드라 -wal / -shm 까지 같이 가져와야 최근 메시지가 보인다.
     """
-    tmp = tempfile.mkdtemp(prefix="cm_")
     base = os.path.basename(src)
     for suffix in ("", "-wal", "-shm"):
         p = src + suffix
@@ -41,10 +40,12 @@ def copy_db(src):
 
 
 def parse_attachments(file_path):
-    """FilePath 필드는 |건수|크기;크기|보낸사람쪽경로|파일명|플래그| 꼴이다."""
+    """FilePath 필드는 |건수|크기;크기;|보낸사람쪽폴더|파일명|플래그| 꼴이고,
+    첨부가 여러 개면 (폴더|파일명|플래그) 세 칸이 건수만큼 반복된다."""
     if not file_path:
         return []
-    return re.findall(r"\|([^|]*\.\w+)\|", file_path)
+    fields = file_path.split("|")[1:-1]      # 양끝 구분자 하나씩만 벗긴다
+    return [name for name in fields[3::3] if name]
 
 
 def strip_quote(text, quote_mark):
@@ -66,8 +67,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sent", action="store_true", help="보낸메시지(기본은 받은메시지)")
     ap.add_argument("--since", help="YYYY-MM-DD 또는 'YYYY/MM/DD HH:MM'")
-    ap.add_argument("--contains", help="본문에 이 문구가 들어간 것만")
-    ap.add_argument("--from", dest="sender", help="보낸사람 이름에 이 문구가 들어간 것만")
+    ap.add_argument("--contains", help="제목이나 본문(인용문 포함)에 이 문구가 들어간 것만")
+    ap.add_argument("--from", dest="sender", help="상대 이름에 이 문구가 들어간 것만(받은메시지는 보낸사람, --sent면 받는사람)")
     ap.add_argument("--quote-mark", default="님이 보낸글",
                     help="인용 시작 표시. 이 앞부분만 '회신내용'으로 담는다")
     ap.add_argument("--full", action="store_true", help="인용문까지 통째로 담기")
@@ -79,8 +80,6 @@ def main():
                            else ("tbl_recv", "Sender", "ReceiveDate"))
 
     since = (a.since or "").replace("-", "/")
-    con = sqlite3.connect(copy_db(find_db()))
-    con.row_factory = sqlite3.Row
     sql = "select %s as Who, %s as When_, Title, FilePath, MessageText from %s" % (who, datecol, table)
     args = []
     if since:
@@ -88,21 +87,38 @@ def main():
         args.append(since)
     sql += " order by %s" % datecol
 
-    rows = []
-    for r in con.execute(sql, args):
-        text = r["MessageText"] or ""
-        if a.contains and a.contains not in text and a.contains not in (r["Title"] or ""):
-            continue
-        if a.sender and a.sender not in (r["Who"] or ""):
-            continue
-        rows.append({
-            "상대": r["Who"],
-            "일시": r["When_"],
-            "제목": r["Title"],
-            "첨부": "; ".join(parse_attachments(r["FilePath"])),
-            "내용": (text if a.full else strip_quote(text, a.quote_mark)).strip(),
-        })
-    con.close()
+    src = find_db()
+    # 사본은 교직원 메시지 전체라 실패해도 남기지 않는다.
+    tmp = tempfile.mkdtemp(prefix="cm_")
+    try:
+        con = sqlite3.connect(copy_db(src, tmp))
+        cur = None
+        try:
+            con.row_factory = sqlite3.Row
+            rows = []
+            cur = con.execute(sql, args)
+            for r in cur:
+                text = r["MessageText"] or ""
+                if a.contains and a.contains not in text and a.contains not in (r["Title"] or ""):
+                    continue
+                if a.sender and a.sender not in (r["Who"] or ""):
+                    continue
+                rows.append({
+                    "상대": r["Who"],
+                    "일시": r["When_"],
+                    "제목": r["Title"],
+                    "첨부": "; ".join(parse_attachments(r["FilePath"])),
+                    "내용": (text if a.full else strip_quote(text, a.quote_mark)).strip(),
+                })
+        finally:
+            # 커서가 남아 있으면 Windows에서 사본 파일이 잠겨 지워지지 않는다.
+            if cur is not None:
+                cur.close()
+            con.close()
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+        if os.path.exists(tmp):
+            sys.stderr.write("경고: DB 사본을 지우지 못했습니다. 직접 지우세요: %s\n" % tmp)
 
     if a.format == "json":
         out = json.dumps(rows, ensure_ascii=False, indent=2)

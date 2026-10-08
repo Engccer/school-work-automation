@@ -8,10 +8,12 @@
 
 | 스킬 | 담당 영역 |
 |---|---|
-| **neis-automation** (나이스) | 업무포털 → 나이스 진입, EVPN 원격 접속, 근무상황·출장 신청(육아시간·연가·조퇴 등), 외부강의 신고·현황, 정기고사 일괄채점·문항 통계, 학기 시작 선행작업(성취기준·수행평가영역·반영비율), 동아리 이수시간·특기사항, 학교생활기록부 독서활동상황 입력, 급여명세서 내려받기·CSV 검산, 재직증명서 등 교육제증명 발급(정부24), 나이스광장 질의등록, 상신함 결재 내역 추출 |
-| **k-edufine-automation** (K-에듀파인) | 업무포털 → K-에듀파인 진입, 결재대기 공문 처리(과제카드·문서처리), 공문 본문·첨부 PC저장(ODT 텍스트 추출), 신규 기안 작성 → 수신자·결재경로 지정 → 결재올림(대외시행·내부결재), 사용자지원서비스 질의등록 |
-| **kyodetong-submit** (교데통) | 교데통(교육행정데이터통합관리) 데이터취합 접수 → 파일 첨부 → 임시저장 → 내부승인 결재 상신 → 완료 확인 |
+| **neis-automation** (나이스) | 업무포털 → 나이스 진입, EVPN 원격 접속, 근무상황·출장 신청(육아시간·연가·조퇴 등), 외부강의 신고·현황, 정기고사 일괄채점·문항 통계, 학기 시작 선행작업(성취기준·수행평가영역·반영비율), 동아리 이수시간·특기사항, 학교생활기록부 독서활동상황·교과 세특 화면 입력, 급여명세서 내려받기·CSV 검산, 재직증명서 등 교육제증명 발급(정부24), 나이스광장 질의등록, 상신함 결재 내역 추출 |
+| **k-edufine-automation** (K-에듀파인) | 업무포털 → K-에듀파인 진입, 결재대기 공문 처리(과제카드·문서처리), 공문 본문·첨부 PC저장(ODT 텍스트 추출), 신규 기안 작성 → 수신자·결재경로 지정 → 결재올림(대외시행·내부결재), 문서등록대장 선례 조회, 완료 문서 공개구분 수정, 사용자지원서비스 질의등록 |
+| **kyodetong-submit** (교데통) | 교데통(교육행정데이터통합관리) 데이터취합 접수 → 파일 첨부 → 임시저장 → 내부승인 결재 상신 또는 K-에듀파인 전자결재 연계기안 → 완료 확인, 제출취소·회수 |
 | **coolmessenger-automation** (쿨메신저) | 교내 메신저 쿨메신저(CoolMessenger Gentoo)의 받은·보낸 메시지를 로컬 SQLite DB에서 직접 읽어 회신 수합·미회신자 파악, 첨부파일 일괄 수집, 회신 창 채우기(발송은 사용자 확인 후). 브라우저가 아니라 PowerShell Win32 창 조작 |
+
+K-에듀파인·쿨메신저 스크립트에는 실제 업무 시스템·앱을 건드리지 않는 시험이 각 스킬의 `scripts/tests/`에 들어 있다.
 
 ## 필요한 것
 
@@ -40,7 +42,7 @@
 npx skills add Engccer/school-work-automation -g
 ```
 
-`npx`는 Node.js에 포함돼 있다. 개별 스킬만 쓰고 싶으면 설치 후 필요 없는 스킬 폴더를 지워도 서로 의존하지 않는다(K-에듀파인·교데통 스킬이 나이스 스킬의 로그인 단계를 참조하는 문서 링크만 있다).
+`npx`는 Node.js에 포함돼 있다. 개별 스킬만 쓰고 싶으면 설치 후 필요 없는 스킬 폴더를 지워도 서로 의존하지 않는다(K-에듀파인·교데통 스킬이 나이스 스킬의 로그인 단계를 참조하고, 교데통 전자결재 연계기안은 K-에듀파인 스킬 문서를 참조한다).
 
 ## 비용
 
@@ -54,7 +56,7 @@ MIT (c) 2026 Engccer
 
 ## English
 
-**school-work-automation** is a skill bundle that automates the administrative systems used by teachers in Korean public schools with a coding agent (Claude Code and similar): **NEIS** (attendance/leave requests, exam grading and item statistics, external-lecture reports, club and reading records, payslip download with CSV reconciliation, employment certificates via Gov24), **K-EduFine** (approving incoming official documents, saving document bodies/attachments, drafting and submitting new official documents for external dispatch or internal approval), **Kyodetong** (the education-data collection platform: receive, attach, save, and submit through internal approval), and **CoolMessenger** (the in-school messenger: read replies straight from its local SQLite store, collect attachments in bulk, and pre-fill replies; sending is left to the user).
+**school-work-automation** is a skill bundle that automates the administrative systems used by teachers in Korean public schools with a coding agent (Claude Code and similar): **NEIS** (attendance/leave requests, exam grading and item statistics, external-lecture reports, club, reading, and subject-comment records, payslip download with CSV reconciliation, employment certificates via Gov24), **K-EduFine** (approving incoming official documents, saving document bodies/attachments, drafting and submitting new official documents for external dispatch or internal approval, changing the public-disclosure status of completed documents), **Kyodetong** (the education-data collection platform: receive, attach, save, and submit through internal approval or K-EduFine e-approval), and **CoolMessenger** (the in-school messenger: read replies straight from its local SQLite store, collect attachments in bulk, and pre-fill replies; sending is left to the user).
 
 All four skills were built and repeatedly field-tested by the author, a blind teacher, in real school work. They encode hard-won workarounds for these legacy systems: delayed dialog rendering, custom DIV dropdowns that reject `form_input`, calendar-only date fields, iframe file uploaders that need a `DataTransfer` bridge, and an MSHTML PowerShell bridge for K-EduFine's embedded-IE native document windows.
 

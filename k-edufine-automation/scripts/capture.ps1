@@ -1,12 +1,36 @@
 <#
   제목 부분일치로 최상위 창을 찾아 PNG 로 캡처한다.
-  사용: pwsh -NoProfile -File capture.ps1 -TitleLike "수신자지정" -Out C:\path\shot.png
+  사용: pwsh -NoProfile -File capture.ps1 -TitleLike "수신자지정" [-Out C:\path\shot.png]
+  -Out 을 생략하면 %TEMP%\kedufine-capture\<시각>.png 에 저장하고 SAVED= 로 경로를 알린다.
+  공문 내용이 담긴 캡처이므로 판독 직후 지운다.
 #>
 param(
   [string]$TitleLike = "",
   [string]$Out = "",
   [switch]$Restore
 )
+
+# 표본 픽셀이 모두 같은 색(RGB, 알파 무시)이면 빈 화면(PrintWindow 가 주는 검은·회색 빈 화면)으로 본다
+function Test-BlankBitmap($bmp) {
+  $first = $bmp.GetPixel(0, 0).ToArgb() -band 0xFFFFFF
+  for ($yy = 0; $yy -lt $bmp.Height; $yy += 17) {
+    for ($xx = 0; $xx -lt $bmp.Width; $xx += 23) {
+      if (($bmp.GetPixel($xx, $yy).ToArgb() -band 0xFFFFFF) -ne $first) { return $false }
+    }
+  }
+  return $true
+}
+
+# -Out 이 비면 <TEMP>\kedufine-capture\<yyyyMMdd-HHmmss-fff>.png (폴더는 만든다)
+function Resolve-CaptureOut([string]$Out, [string]$TempRoot = $env:TEMP, [datetime]$Now = (Get-Date)) {
+  if ($Out) { return $Out }
+  if (-not $TempRoot) { $TempRoot = [System.IO.Path]::GetTempPath() }
+  $dir = Join-Path $TempRoot 'kedufine-capture'
+  New-Item -ItemType Directory -Force -Path $dir | Out-Null
+  return (Join-Path $dir ($Now.ToString('yyyyMMdd-HHmmss-fff') + '.png'))
+}
+
+if ($MyInvocation.InvocationName -eq '.') { return }   # 시험용 점-소싱: 함수만 불러오고 창은 건드리지 않는다
 
 Add-Type -AssemblyName System.Drawing
 
@@ -68,16 +92,9 @@ $g = [System.Drawing.Graphics]::FromImage($bmp)
 $hdc = $g.GetHdc()
 $ok = [CapWin]::PrintWindow($h, $hdc, 2)
 $g.ReleaseHdc($hdc)
-# 화면 복사 폴백 (PrintWindow 실패 또는 전부 검은 화면일 때)
+# 화면 복사 폴백 (PrintWindow 실패 또는 표본 픽셀이 모두 같은 색인 빈 화면일 때)
 $blank = $true
-if ($ok) {
-  for ($yy = 0; $yy -lt $ht -and $blank; $yy += 17) {
-    for ($xx = 0; $xx -lt $w -and $blank; $xx += 23) {
-      $p = $bmp.GetPixel($xx, $yy)
-      if ($p.R -ne 0 -or $p.G -ne 0 -or $p.B -ne 0) { $blank = $false }
-    }
-  }
-}
+if ($ok) { $blank = Test-BlankBitmap $bmp }
 if (-not $ok -or $blank) {
   "PrintWindow 실패/빈화면 → CopyFromScreen 폴백"
   $g2 = [System.Drawing.Graphics]::FromImage($bmp)
@@ -85,6 +102,7 @@ if (-not $ok -or $blank) {
   $g2.Dispose()
 }
 $g.Dispose()
+$Out = Resolve-CaptureOut -Out $Out
 $bmp.Save($Out, [System.Drawing.Imaging.ImageFormat]::Png)
 $bmp.Dispose()
 "SAVED=$Out"

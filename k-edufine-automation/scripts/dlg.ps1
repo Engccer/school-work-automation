@@ -1,5 +1,5 @@
 <#
-  네이티브 대화상자(#32770)의 자식 컨트롤을 덤프하거나 버튼을 누른다.
+  Win32 메시지 창(#32770)의 자식 컨트롤을 덤프하거나 버튼을 누른다.
   사용:
     pwsh -NoProfile -File dlg.ps1 -TitleLike "웹 페이지 메시지"                # 전부 덤프
     pwsh -NoProfile -File dlg.ps1 -TitleLike "웹 페이지 메시지" -Click 1        # 컨트롤ID 1 클릭

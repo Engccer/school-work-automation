@@ -68,7 +68,9 @@ function Open-CMArchive {
         저절로 열리는데, 생김새가 관리함과 같아서 헷갈린다. 그 창은 방금 온
         메시지만 담고 있어 목록이 몇 건뿐이고, 시간이 지나면 그마저 빠진다.
         전체 이력과 지난 첨부를 다루려면 그 창을 닫고 메인 창의
-        [메시지관리함 열기](Ctrl+B)로 진짜 관리함(제목 '메시지 관리함')을 열어야 한다. #>
+        [메시지관리함 열기](Ctrl+B)로 진짜 관리함(제목 '메시지 관리함')을 열어야 한다.
+        관리함은 늦게 뜰 때가 있어 제목을 최대 $TimeoutSec초 폴링하고, 못 찾으면 오류를 낸다. #>
+    param([int]$TimeoutSec = 20)
     $archive = Find-CMWindow -TitlePattern '^메시지 관리함$'
     if ($archive -ne [IntPtr]::Zero) { return $archive }
 
@@ -84,8 +86,22 @@ function Open-CMArchive {
     $null = Set-CMActive -Hwnd $main
     $open = Find-CMControl -Parent $main -Class 'Button' -TextLike '메시지관리함 열기*'
     [void][CM]::Msg($open, 0x00F5, [IntPtr]0, [IntPtr]0)
-    Start-Sleep -Seconds 4
-    return Find-CMWindow -TitlePattern '^메시지 관리함$'
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    do {
+        Start-Sleep -Milliseconds 500
+        $archive = Find-CMWindow -TitlePattern '^메시지 관리함$'
+        if ($archive -ne [IntPtr]::Zero) { return $archive }
+    } while ((Get-Date) -lt $deadline)
+    throw "메시지 관리함이 ${TimeoutSec}초 안에 열리지 않았습니다."
+}
+
+function Get-CMSendNotice {
+    <#  [보내기] 뒤 안내 문구. 클릭은 5~15초 늦게 반영될 때가 있어 창이 닫혔는지로
+        발송을 단정하지 않는다. 창이 남았다고 다시 누르면 중복 발송이 된다. #>
+    param([IntPtr]$Compose, [string]$Name)
+    $check = "발송 여부는 'python scripts/cm_export.py --sent --since <보낸 시각>'으로 tbl_send를 조회해 확인하세요."
+    if ([CM]::IsWindow($Compose)) { "회신 창이 아직 열려 있습니다($Name). [보내기]를 다시 누르지 말고 먼저 $check" }
+    else                          { "회신 창 닫힘($Name). $check" }
 }
 
 function Find-CMControl {
@@ -207,7 +223,7 @@ function Select-CMMessage {
 
 # ------------------------------------------------------------------ 대화상자
 function Close-CMDialog {
-    <#  대화상자 버튼은 BM_CLICK을 무시한다. 부모에 WM_COMMAND + 컨트롤 ID를 보내야 한다.
+    <#  모달 대화상자('파일 다운로드 중' 등)의 버튼은 BM_CLICK을 무시한다. 부모에 WM_COMMAND + 컨트롤 ID를 보내야 한다.
         ID는 창마다 달라 매번 GetDlgCtrlID로 읽는다(확인 1·2·5025 등 제각각). #>
     param([IntPtr]$Dialog, [string]$ButtonText)
     foreach ($c in [CM]::Kids($Dialog)) {
@@ -224,10 +240,9 @@ function Close-CMDialog {
 function Wait-CMDownload {
     <#  '파일 다운로드 중' 창 처리.
 
-        첨부는 서버가 아니라 보낸 사람 PC에서 직접 받아 온다(CoolFile2 P2P).
-        보낸 분이 자리를 비웠거나 전송 세션이 만료되면 0 bytes에서 멈춘 채
-        창이 그대로 남는다 — 실제로 57분을 멈춰 있던 적이 있다.
-        조용히 실패하므로 저장 뒤에는 반드시 이 함수로 확인한다. #>
+        다운로드가 0 bytes에서 멈춘 채 창이 오류 없이 남을 때가 있다(57분 멈춘 적이 있다).
+        조용히 실패하므로 저장 뒤에는 반드시 이 함수로 확인한다.
+        STALLED면 메시지 관리함(제목 '메시지 관리함')에서 다시 시도한다. #>
     param([int]$TimeoutSec = 25)
     Start-Sleep -Milliseconds 1500      # 창이 뜨기 전에 확인하면 성공으로 오인한다
     $deadline = (Get-Date).AddSeconds($TimeoutSec)

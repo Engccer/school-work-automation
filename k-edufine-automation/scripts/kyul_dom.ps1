@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  K-에듀파인 결재 클라이언트 앱(WXSClient.exe / "문서관리카드결재" 창) 내부 DOM 제어 브리지.
+  K-에듀파인 결재 클라이언트 앱(WXSClient.exe / 창 제목 "HCLTAPP_KYUL_") 내부 DOM 제어 브리지.
 
 .DESCRIPTION
   결재 문서 창은 브라우저 탭이 아니라 네이티브 Windows 창이지만, 내부 렌더러가
@@ -90,7 +90,7 @@ function Call-Method($obj, $name, $argsArr) {
 # 1. 대상 창 핸들 (프로세스 기반 — 가상 데스크톱/최소화에 영향 없음)
 $procs = @(Get-Process WXSClient -ErrorAction SilentlyContinue |
   Where-Object { $_.MainWindowTitle -eq $WindowName -and $_.MainWindowHandle -ne 0 })
-if ($procs.Count -eq 0) { "ERR: '$WindowName' 창 없음 (결재 문서가 열려 있는지 확인)"; exit 1 }
+if ($procs.Count -eq 0) { "ERR: '$WindowName' 창 없음. 창 제목이 잠깐 비어 보일 수 있으니 잠시 뒤 재시도하고, 문서를 다시 열지 말 것(창 중복). 확인은 mshtml_dom.ps1 -ListOnly (거기에도 HCLTAPP_KYUL_ 이 없으면 결재 문서가 열리지 않은 것)"; exit 1 }
 if ($procs.Count -gt 1) { "WARN: 같은 제목 창 $($procs.Count)개 — index $Index 사용 (pid $($procs[$Index].Id))" }
 $hwnd = $procs[$Index].MainWindowHandle
 
