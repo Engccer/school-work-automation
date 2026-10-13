@@ -19,7 +19,7 @@ $env:TTS_SUMMARY = 'off'   # 자동 실행 세션은 음성 요약·누락 가�
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 
 $scripts = $PSScriptRoot
-$projectRoot = if ($env:ALIM_PROJECT_ROOT) { $env:ALIM_PROJECT_ROOT } else { (Resolve-Path (Join-Path $scripts '..\..\..\..')).Path }
+$projectRoot = (Resolve-Path (Join-Path $scripts '..\..\..\..')).Path
 $logDir = Join-Path $env:LOCALAPPDATA '알림장-자동화\log'
 New-Item -ItemType Directory -Force $logDir | Out-Null
 $log = Join-Path $logDir "$Date.log"
@@ -33,10 +33,11 @@ $exportCode = $LASTEXITCODE
 $out | ForEach-Object { Write-Log "export: $_" }
 if ($exportCode -ne 0) { Write-Log "alim_export 실패(종료 코드 $exportCode) — 종료"; exit 3 }
 
-$d = [datetime]::ParseExact($Date, 'yyyy-MM-dd', $null)
-$label = '{0}({1})' -f $Date, '일월화수목금토'[[int]$d.DayOfWeek]
-$sy = if ($d.Month -ge 3) { $d.Year } else { $d.Year - 1 }
-$folder = Join-Path $projectRoot "$sy 업무\4. 교무\알림장\$label"
+# 날짜 폴더는 alim_export.py 가 정한다(ALIM_OUT_DIR). 저장 경로를 출력의 SAVED 줄에서 받는다.
+$saved = $out | ForEach-Object { "$_" } | Where-Object { $_ -like 'SAVED *' } | Select-Object -First 1
+if (-not $saved) { Write-Log '전달사항 없음 — 종료'; exit 0 }
+$folder = Split-Path $saved.Substring(6)
+$label = Split-Path -Leaf $folder
 $summary = Join-Path $folder "$label 알림장 첨부 요약.txt"
 
 $atts = @(Get-ChildItem -LiteralPath $folder -Filter '첨부*' -File -ErrorAction SilentlyContinue)
@@ -69,7 +70,7 @@ $extLines
 Write-Log "claude -p 시작 (첨부 $($atts.Count)건, 추출 $($mds.Count)건)"
 Push-Location $projectRoot
 try {
-  $res = & claude -p $prompt `
+  $res = & claude -p $prompt --add-dir $folder $work `
     --allowedTools 'Read' 'Write' 'Edit' 'Bash(python:*)' 'Bash(grep:*)' 'Bash(awk:*)' 2>&1
   $res | ForEach-Object { Write-Log "claude: $_" }
 } finally { Pop-Location }

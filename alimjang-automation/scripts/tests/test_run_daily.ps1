@@ -41,10 +41,10 @@ class DBF:
                      Fake = $fake; Db = $db; Local = $local }
 }
 
-function Write-Rows($fx, $date, $att) {
+function Write-Rows($fx, $date, $att, [switch]$Empty) {
   $r = [ordered]@{ ALDATE = $date; ALJOGI = '' }
   1..20 | ForEach-Object { $r[('ALME{0:D2}' -f $_)] = '' }
-  $r['ALME04'] = '연구부 안내'
+  if (-not $Empty) { $r['ALME04'] = '연구부 안내' }
   1..5 | ForEach-Object { $r["ALHWP$_"] = ''; $r["ALID0$_"] = '' }
   if ($att) { $r['ALHWP1'] = $att; $r['ALID01'] = '4'; [IO.File]::WriteAllBytes((Join-Path $fx.Db $att), [byte[]](1, 2, 3)) }
   ConvertTo-Json @($r) | Set-Content -Encoding utf8NoBOM (Join-Path $fx.Db 'ALIM.DBF')
@@ -83,13 +83,14 @@ function claude {
   $global:LASTEXITCODE = 0
 }
 
-function Invoke-Daily($fx, $date) {
+function Invoke-Daily($fx, $date, $outDir = '{학년도} 업무\4. 교무\알림장') {
   # PATH 를 빈 폴더로 바꿔, 함수 가림이 깨져도 진짜 python·claude 가 잡히지 않게 한다
   $saved = $env:LOCALAPPDATA, $env:PATH
+  if ($outDir) { $env:ALIM_OUT_DIR = $outDir } else { Remove-Item Env:ALIM_OUT_DIR -ErrorAction SilentlyContinue }
   $env:LOCALAPPDATA = $fx.Local
   $env:PATH = $fx.Local
   try { & $fx.Script -Date $date 2>$null | Out-Null; return $LASTEXITCODE }
-  finally { $env:LOCALAPPDATA, $env:PATH = $saved; Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue }
+  finally { $env:LOCALAPPDATA, $env:PATH = $saved; Remove-Item Env:PYTHONPATH, Env:ALIM_OUT_DIR -ErrorAction SilentlyContinue }
 }
 function Read-Log($fx, $date) { Get-Content -Raw -Encoding utf8 (Join-Path $fx.Local "알림장-자동화\log\$date.log") }
 
@@ -135,6 +136,36 @@ try {
   $folder = Join-Path $fx.Proj '2020 업무\4. 교무\알림장\2020-03-02(월)'
   Assert ($code -eq 0) "3월 날짜 → 0 (실제 $code)"
   Assert (Microsoft.PowerShell.Management\Test-Path -LiteralPath (Join-Path $folder '2020-03-02(월) 알림장 첨부 요약.txt')) '3월 날짜 요약이 그해(2020) 학년도 폴더에 생긴다'
+} finally { Remove-Item -Recurse -Force $fx.Tmp }
+
+# 6. 전달사항 없는 날은 SAVED 줄이 없어 0으로 끝나고 claude 를 부르지 않는다
+$global:fx = New-Fixture; $global:mode = 'real'; $global:prompt = $null
+try {
+  Write-Rows $fx '2020-09-19' $null -Empty
+  $code = Invoke-Daily $fx '2020-09-19'
+  Assert ($code -eq 0) "전달사항 없음 → 0 (실제 $code)"
+  Assert ((Read-Log $fx '2020-09-19') -match '전달사항 없음') '로그에 전달사항 없음이 남는다'
+  Assert ($null -eq $global:prompt) '전달사항 없으면 claude 를 부르지 않는다'
+} finally { Remove-Item -Recurse -Force $fx.Tmp }
+
+# 7. 출력 루트가 옛 구조와 달라도(공백·한글 절대 경로, 환경 변수 없음 기본값) export 가 저장한 폴더를 따른다
+$global:fx = New-Fixture; $global:mode = 'real'; $global:prompt = $null
+try {
+  Write-Rows $fx '2020-02-27' 'H02271.PDF'
+  $abs = Join-Path $fx.Tmp 'out 폴더\{학년도} 알림장'
+  $code = Invoke-Daily $fx '2020-02-27' $abs
+  $folder = Join-Path $fx.Tmp 'out 폴더\2019 알림장\2020-02-27(목)'
+  Assert ($code -eq 0) "절대 경로 출력 → 0 (실제 $code)"
+  Assert (Microsoft.PowerShell.Management\Test-Path -LiteralPath (Join-Path $folder '2020-02-27(목) 알림장 첨부 요약.txt')) '공백·한글 절대 경로의 날짜 폴더에 요약이 생긴다'
+} finally { Remove-Item -Recurse -Force $fx.Tmp }
+$global:fx = New-Fixture; $global:mode = 'real'; $global:prompt = $null
+try {
+  Write-Rows $fx '2020-03-02' 'H03021.PDF'
+  $code = Invoke-Daily $fx '2020-03-02' ''
+  $def = ((Get-Content -Encoding utf8 (Join-Path $realScripts 'alim_export.py')) | Where-Object { $_ -like 'DEFAULT_OUT = *' }) -replace '^DEFAULT_OUT = "(.*)"$', '$1'
+  $folder = Join-Path $fx.Proj (($def -replace '\{학년도\}', '2020') + '\2020-03-02(월)')
+  Assert ($code -eq 0) "기본 출력 루트 → 0 (실제 $code)"
+  Assert (Microsoft.PowerShell.Management\Test-Path -LiteralPath (Join-Path $folder '2020-03-02(월) 알림장 첨부 요약.txt')) "환경 변수가 없으면 DEFAULT_OUT($def)에 요약이 생긴다"
 } finally { Remove-Item -Recurse -Force $fx.Tmp }
 
 if ($fails) { Write-Host "$fails 건 실패"; exit 1 }

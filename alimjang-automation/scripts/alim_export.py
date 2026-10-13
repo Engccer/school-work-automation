@@ -1,7 +1,7 @@
 r"""알림장관리 3.0 공유 DB(\\관리자\$ALIM$)에서 전달사항을 읽기 전용으로 추출한다.
 
 사용 예(스킬 루트에서)
-  python scripts/alim_export.py                          # 오늘 전달사항 → 알림장/<날짜>(<요일>)/ 에 저장 + 첨부 복사
+  python scripts/alim_export.py                          # 오늘 전달사항 → <출력 루트>/<날짜>(<요일>)/ 에 저장 + 첨부 복사
   python scripts/alim_export.py --date 2026-09-29        # 특정 날짜
   python scripts/alim_export.py --from 2026-09-28 --to 2026-10-02   # 기간(날짜마다 폴더)
   python scripts/alim_export.py --search 방과후 --from 2026-03-01 --to 2026-09-30
@@ -26,7 +26,9 @@ except ImportError:
     sys.exit("dbfread가 없습니다. 'pip install dbfread' 후 다시 실행하세요.")
 
 SERVER = r"\\관리자\$ALIM$"
-PROJECT_ROOT = Path(os.environ.get("ALIM_PROJECT_ROOT") or Path(__file__).resolve().parents[4])
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+# 출력 루트. ALIM_OUT_DIR 로 바꾼다. {학년도} 는 학년도 숫자로 바뀌고, 상대 경로는 PROJECT_ROOT 기준이다.
+DEFAULT_OUT = "알림장/{학년도}"
 WEEKDAY_KO = "월화수목금토일"
 DEFAULT_KEYWORDS = [k.strip() for k in os.environ.get("ALIM_KEYWORDS", "").split(",") if k.strip()]
 MY_DEPTS = [k.strip() for k in os.environ.get("ALIM_MY_DEPTS", "").split(",") if k.strip()]
@@ -41,7 +43,9 @@ def label(d: dt.date) -> str:
 
 
 def default_out_root(d: dt.date) -> Path:
-    return PROJECT_ROOT / f"{school_year(d)} 업무" / "4. 교무" / "알림장"
+    tpl = os.environ.get("ALIM_OUT_DIR") or DEFAULT_OUT
+    p = Path(os.path.expandvars(os.path.expanduser(tpl.replace("{학년도}", str(school_year(d))))))
+    return p if p.is_absolute() else PROJECT_ROOT / p
 
 
 def snapshot(src_dir: str) -> str:
@@ -201,13 +205,13 @@ def main():
     ap.add_argument("--from", dest="dfrom")
     ap.add_argument("--to", dest="dto")
     ap.add_argument("--year", type=int, help="학년도 전체(3/1~이듬해 2월 말일)를 대상으로. 아카이브는 날짜로 자동 선택")
-    ap.add_argument("--search", help="본문 키워드 검색(결과를 알림장/검색/ 에 저장)")
+    ap.add_argument("--search", help="본문 키워드 검색(결과를 <출력 루트>/검색/ 에 저장)")
     ap.add_argument("--dept", help="부서 칸 이름으로 거르기(예: 교무부)")
-    ap.add_argument("--list", action="store_true", help="부서별 누적 목록을 한 파일로(알림장/검색/)")
+    ap.add_argument("--list", action="store_true", help="부서별 누적 목록을 한 파일로(<출력 루트>/검색/)")
     ap.add_argument("--keywords", help="관련 항목 낱말, 쉼표 구분")
     ap.add_argument("--no-attach", action="store_true", help="첨부 복사 생략")
     ap.add_argument("--src", help=r"DB 폴더 직접 지정(예: C:\알림장\AUTOBACK, 서버가 꺼졌을 때)")
-    ap.add_argument("--out", help="출력 루트(기본: <학년도> 업무/4. 교무/알림장. 날짜별은 그 날짜의 학년도, 검색은 실행일의 학년도)")
+    ap.add_argument("--out", help="출력 루트(기본: 환경 변수 ALIM_OUT_DIR 또는 DEFAULT_OUT. {학년도}는 날짜별이면 그 날짜의, 검색이면 실행일의 학년도)")
     ap.add_argument("--stdout", action="store_true", help="파일 대신 표준출력(UTF-8)")
     a = ap.parse_args()
 

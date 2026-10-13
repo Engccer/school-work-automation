@@ -9,6 +9,7 @@ import datetime
 import importlib.util
 import io
 import json
+import os
 import shutil
 import sys
 import tempfile
@@ -56,6 +57,8 @@ class AlimExportTest(unittest.TestCase):
         sys.path.insert(0, str(fake))
         self._saved_tempdir = tempfile.tempdir
         tempfile.tempdir = str(self.tmp)
+        self._saved_out = os.environ.get("ALIM_OUT_DIR")
+        os.environ["ALIM_OUT_DIR"] = "{학년도} 업무/4. 교무/알림장"  # 기본값과 무관하게 시험
 
         spec = importlib.util.spec_from_file_location("alim_export_under_test", SCRIPT)
         self.m = importlib.util.module_from_spec(spec)
@@ -77,6 +80,10 @@ class AlimExportTest(unittest.TestCase):
         if self._saved_mod is not None:
             sys.modules["dbfread"] = self._saved_mod
         tempfile.tempdir = self._saved_tempdir
+        if self._saved_out is None:
+            os.environ.pop("ALIM_OUT_DIR", None)
+        else:
+            os.environ["ALIM_OUT_DIR"] = self._saved_out
         shutil.rmtree(self.tmp, ignore_errors=True)
 
     def write_rows(self, rows):
@@ -151,6 +158,19 @@ class AlimExportTest(unittest.TestCase):
         self.run_main(datetime.date(2026, 3, 5), "--date", "2026-02-27", "--out", str(out))
         self.assertTrue((out / "2026-02-27(금)").is_dir())
         self.assertFalse((self.root / "2025 업무").exists())
+
+    def test_out_dir_env_absolute_with_school_year(self):
+        self.write_rows([row("2026-02-27", {4: "가"})])
+        os.environ["ALIM_OUT_DIR"] = str(self.tmp / "out" / "{학년도}")
+        self.run_main(datetime.date(2026, 3, 5), "--date", "2026-02-27")
+        self.assertTrue((self.tmp / "out" / "2025" / "2026-02-27(금)").is_dir())
+
+    def test_default_out_without_env(self):
+        self.write_rows([row("2026-03-02", {4: "가"})])
+        os.environ.pop("ALIM_OUT_DIR", None)
+        self.run_main(datetime.date(2026, 3, 5), "--date", "2026-03-02")
+        base = self.root / self.m.DEFAULT_OUT.replace("{학년도}", "2026")
+        self.assertTrue((base / "2026-03-02(월)").is_dir())
 
     def test_year_range_ends_on_last_day_of_february(self):
         self.write_rows([row("2028-02-29", {7: "윤일 방과후"}), row("2027-02-28", {7: "평년 방과후"})])
