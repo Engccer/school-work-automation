@@ -123,6 +123,7 @@ Claude in Chrome MCP 도구를 사용한다. **인증서 로그인은 반드시 
 | 재직증명서 등 교육제증명 발급(정부24, 업무포털 불필요) | [references/교육제증명-정부24.md](references/교육제증명-정부24.md) |
 | 교과 세특 입력(과목별세부능력및특기사항) | [references/교과-세특.md](references/교과-세특.md) |
 | 나이스광장 질의등록·나이스 업무 FAQ | [references/나이스광장-지원.md](references/나이스광장-지원.md) |
+| 크롬 확장이 `Cannot attach to this target`으로 붙지 않을 때(K-에듀파인·교데통 공통) | [references/playwright-폴백.md](references/playwright-폴백.md) |
 
 경위·날짜·실측 수치와 변경 이력은 [references/cases.md](references/cases.md)에 있다. 규칙 끝의 `→ 사례`가 그 자리를 가리킨다.
 
@@ -256,6 +257,9 @@ Claude in Chrome MCP 도구를 사용한다. **인증서 로그인은 반드시 
   - **Chrome 팝업 창이 떴는지 `Get-Process chrome | MainWindowTitle`로 확인하면 안 된다** —
     MainWindowTitle은 프로세스당 하나만 돌려주므로 같은 프로세스의 새 창이 보이지 않는다.
     `EnumWindows`로 `Chrome_WidgetWin_1` 클래스 창 제목을 열거해야 한다. → 사례
+  - **모든 탭에서 `Cannot attach to this target`이면 크롬 확장 경로를 버리고 Playwright로 간다**
+    → [references/playwright-폴백.md](references/playwright-폴백.md). 앱 내장 브라우저는 인증서
+    프로그램을 인식하지 못하고, 데스크톱 제어는 브라우저를 읽기 전용으로만 다뤄 대안이 되지 않는다.
 
 ## 일반 원칙
 

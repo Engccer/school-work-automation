@@ -41,6 +41,8 @@ metadata:
    상세는 스킬 `neis-automation`의 1~3단계와 동일하다.
 3. 업무포털 메인 상단 메뉴에서 **[교데통]** 클릭 → **새 탭**이 열리고 `sen.edmgr.kr/taskPotlMain`로 SSO 자동 로그인.
    창 폭이 좁으면 [교데통]이 잘려 보이므로 `find`로 링크 ref를 잡는 편이 빠르다.
+   Claude in Chrome이 모든 탭에서 `Cannot attach to this target`으로 붙지 않으면 Playwright 크롬으로 바꾼다
+   → 스킬 `neis-automation`의 [references/playwright-폴백.md](../neis-automation/references/playwright-폴백.md).
 4. 상단 메뉴 **데이터취합 > 제출자료**. (하위: 요청자료 / 제출자료 / 수신자관리 / 기관요청자료 / 기관제출자료 / 서식목록 / 요청자료인계인수 / 제출자료인계인수)
 
 교데통 메인에 처음 들어가면 **공지 팝업이 두 겹으로 뜬다**(바깥: 기능개선 안내 / 안쪽: 데이터취합 서비스 운영 관련 안내). 안쪽부터 × 로 닫는다. 각 팝업 하단에 "오늘 열지 않음 / 다시 열지 않음" 체크가 있으나 임의로 켜지 말 것.
@@ -204,6 +206,10 @@ metadata:
 4. **`inp.files.length`가 다시 0으로 보이는 것은 정상**이다. Uppy가 파일을 읽어 간 뒤 input을 비운다. 성공 여부는 반환값이 아니라 화면의 **"1개의 파일 선택됨" + 파일명·용량**으로 판단한다.
 5. **임시 input을 지운다** (`__tmpUp`.remove()). 안 지우면 화면 좌상단에 남아 헤더를 가린다.
 6. 이 시점의 첨부는 **아직 클라이언트에만 있다.** [임시저장]/[저장]까지 눌러야 서버에 올라간다. 저장 후 목록 → 재진입으로 파일이 남아 있는지 최종 검증할 것.
+
+Playwright 폴백에서는 1~3·5번의 다리가 필요 없다. 제출파일 쪽(뒤쪽) iframe을 골라
+`page.frameLocator('iframe[src*="fileMultiUploadDownload"] >> nth=-1').locator('input.uppy-Dashboard-input').setInputFiles(경로)`로
+바로 넣고(미실측), 4·6번 검증은 그대로 한다.
 
 ## 자동화 시행착오 메모
 

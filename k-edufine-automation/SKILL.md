@@ -14,7 +14,10 @@ metadata:
 서울특별시교육청 업무포털을 거쳐 K-에듀파인에 진입해, 들어온 공문을 처리하고(결재대기)
 새 공문을 만들어 올리는(기안) 자동화 워크플로우. **도구가 세 갈래**다.
 
-- **목록·진입**: Claude in Chrome MCP (브라우저)
+- **목록·진입**: Claude in Chrome MCP (브라우저). 확장이 모든 탭에서 `Cannot attach to this target`으로
+  붙지 않으면 Playwright 크롬으로 바꾼다 → 스킬 `neis-automation`의
+  [references/playwright-폴백.md](../neis-automation/references/playwright-폴백.md)
+  (2단계의 [K-에듀파인] 새 탭 진입도 그 파일의 절차 2. 5단계 문서 열기로 WXSClient가 뜨는지는 미확인)
 - **문서 창 내부 판독·필드 입력**: PowerShell MSHTML 브리지(6단계)
   - `scripts/kyul_dom.ps1` — 결재 문서 창 전용(`Get-Process WXSClient` + 제목 완전일치)
   - `scripts/mshtml_dom.ps1` — **제목 부분일치 범용판.** 기안 창과 모든 MSHTML 대화상자는
