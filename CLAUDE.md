@@ -7,6 +7,7 @@
 이 저장소는 **공개 배포용 반출본**이다. 정본(원본 스킬)은 저자의 비공개 학교 업무 폴더 `.claude/skills`에 있으며, 저자가 실사용하면서 그쪽을 먼저 갱신한다. 이 저장소는 정본에서 개인·학교 식별 정보를 제거(sanitization)한 뒤 주기적으로 동기화한다.
 
 - 스킬 5종: `neis-automation/`(나이스) · `k-edufine-automation/`(K-에듀파인) · `kyodetong-submit/`(교데통) · `coolmessenger-automation/`(쿨메신저, 2026-09-27 추가) · `alimjang-automation/`(알림장, 2026-10-14 추가)
+- 공개본 전용 스킬: `school-work-setup/`(설치·요구사항 점검, 2026-10-14 추가). 정본에 대응 폴더가 없어 반출 스크립트의 `MAP`에 넣지 않는다(반출 때 지워지지 않음)
 - 스킬 `name:`과 폴더명은 ASCII를 쓴다. **한국어 이름은 `npx skills add` 설치 시 슬러그화로 깨져
   `unnamed-skill` 충돌·덮어쓰기가 난다**(실측). 한국어 트리거는 description에 담는다.
 - 설치 경로: `npx skills add Engccer/school-work-automation -g`
@@ -21,6 +22,7 @@
 - **구체 패턴은 로컬 전용 `.sanitize.local.md`(gitignored)에 둔다.** 실명 패턴 자체를 이 저장소에 커밋하지 않는다.
 - 정본에서 복사할 때 `desktop.ini` 등 드라이브 잡파일은 제외한다. 정본은 LF·공개본 작업 트리는 CRLF라 대조 diff는 `--ignore-cr-at-eol`로 본다.
 - 공개본에만 있는 것(「적용 범위」 인용 블록, 타 시도 EVPN 도메인 줄, ASCII `name:`·`license: MIT`)은 재반출 때 다시 넣는다. 정본을 통째로 덮어쓰면 사라진다.
+- **플랫폼 중립화**: 정본의 특정 에이전트 도구 이름·제품명·CLI 고정 호출은 반출 때 기능 서술로 바꾼다(정본은 고치지 않는다). 기준은 `sanitize-for-release`의 플랫폼 축(`references/platform-neutral.md`)이고, 반출 끝에 `scan_traces.py --axes platform` 0건을 게이트로 건다. 검증 환경 예시(「Claude in Chrome에서 검증」 등)만 허용 목록으로 남긴다.
 - 번들 밖 개인 스킬을 가리키는 참조(예: 문안 작성 스킬)는 링크를 지우고 문장으로 푼다. 외부 사용자에게는 그 스킬이 없다.
 - 커밋은 의도 파일만 pathspec으로(`git commit -- <경로>`), push까지 완료한다.
 

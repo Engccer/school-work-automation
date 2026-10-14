@@ -35,6 +35,6 @@ SKILL.md 3단계(install.html)에서 넘어온다.
 
 - **질의유형 `기능개선`은 [기능개선 요청서 다운로드]의 서식(hwp) 첨부가 필수**다. 첨부는
   외부 업로더(`fv_extUp`)라 [첨부파일추가]를 눌러도 파일 창·input이 생기지 않는다 →
-  이름 없는 300×150 iframe 안의 `input[type=file]`에 최상위 임시 input + `file_upload` +
+  이름 없는 300×150 iframe 안의 `input[type=file]`에 최상위 임시 input + 파일 업로드 +
   iframe `DataTransfer` 이관(나이스 스킬 RaonK 우회와 동일).
 - [저장] 후에도 등록 창이 남으니 다시 누르지 말고 닫은 뒤 [업무] 탭 목록에서 번호·첨부를 확인한다.

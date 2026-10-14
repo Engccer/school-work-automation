@@ -13,13 +13,14 @@
 | **kyodetong-submit** (교데통) | 교데통(교육행정데이터통합관리) 데이터취합 접수 → 파일 첨부 → 임시저장 → 내부승인 결재 상신 또는 K-에듀파인 전자결재 연계기안 → 완료 확인, 제출취소·회수 |
 | **coolmessenger-automation** (쿨메신저) | 교내 메신저 쿨메신저(CoolMessenger Gentoo)의 받은·보낸 메시지를 로컬 SQLite DB에서 직접 읽어 회신 수합·미회신자 파악, 첨부파일 일괄 수집, 회신 창 채우기(발송은 사용자 확인 후). 브라우저가 아니라 PowerShell Win32 창 조작 |
 | **alimjang-automation** (알림장) | 교직원 공용 알림장관리 3.0의 날짜별·부서별 전달사항을 학교 서버 공유 DB(FoxPro DBF)에서 읽기 전용으로 꺼내 날짜 폴더에 텍스트로 정리, 첨부 수집·텍스트 추출·요약, 키워드·부서·기간·지난 학년도 검색, 평일 아침 자동 정리(작업 스케줄러) |
+| **school-work-setup** (설치 점검) | 위 다섯 스킬의 실행 요구사항(PowerShell 7·Python 패키지·인증서 프로그램·인증서 만료·JDK·`pdftotext`·브라우저 제어 확장 연결 등)을 읽기 전용으로 점검해 스킬마다 "바로 사용 가능 / 빠진 것"을 보고 |
 
 K-에듀파인·쿨메신저·알림장 스크립트에는 실제 업무 시스템·앱을 건드리지 않는 시험이 각 스킬의 `scripts/tests/`에 들어 있다.
 
 ## 필요한 것
 
 - **코딩 에이전트 CLI**: Claude Code 등 스킬(SKILL.md)을 인식하는 에이전트.
-- **Claude in Chrome** 브라우저 확장(MCP): 나이스·K-에듀파인·교데통 세 스킬의 기반이다. 쿨메신저·알림장 스킬은 브라우저를 쓰지 않는다.
+- **브라우저 제어 확장**(Claude in Chrome에서 검증): 나이스·K-에듀파인·교데통 세 스킬의 기반이다. 페이지 JS 실행, 접근성 트리 읽기, 좌표 클릭, 화면 캡처, 파일 업로드를 할 수 있어야 한다. 쿨메신저·알림장 스킬은 브라우저를 쓰지 않는다.
 - **Windows + PowerShell 7**: K-에듀파인의 결재·기안 문서 창은 브라우저가 아니라 네이티브 앱(임베디드 IE)이라, 동봉된 PowerShell MSHTML 브리지 스크립트로 제어한다. 쿨메신저 스킬도 Win32 메시지·마우스 클릭으로 창을 조작하고, 알림장 스킬은 학교 서버 공유 폴더(UNC)와 작업 스케줄러를 쓴다(셋 다 Windows 전용). 나이스·교데통 스킬은 브라우저 조작만 쓴다.
 - **Python 3**: 나이스 급여명세서 CSV 변환(`openpyxl`), 쿨메신저 DB 내보내기(표준 라이브러리만), 알림장 DB 읽기(`dbfread`)와 첨부 추출에 쓴다. 알림장 첨부 추출은 [hwpx-automation](https://github.com/Engccer/hwpx-automation) 스킬(`hwpx-tomd`, HWP 변환에 JDK 21)과 `pdftotext`도 필요하다.
 - **교육행정 전자서명 인증서**: 로그인은 항상 사용자가 직접 수행한다(아래 안전 원칙).
@@ -44,7 +45,7 @@ K-에듀파인·쿨메신저·알림장 스크립트에는 실제 업무 시스�
 npx skills add Engccer/school-work-automation -g
 ```
 
-`npx`는 Node.js에 포함돼 있다. 개별 스킬만 쓰고 싶으면 설치 후 필요 없는 스킬 폴더를 지워도 서로 의존하지 않는다(K-에듀파인·교데통 스킬이 나이스 스킬의 로그인 단계를 참조하고, 교데통 전자결재 연계기안은 K-에듀파인 스킬 문서를 참조한다). 알림장 스킬의 첨부 추출은 별도 저장소의 hwpx-automation 스킬을 같은 스킬 폴더에 설치해 쓴다.
+설치 뒤 에이전트에게 "학교 업무 자동화 스킬 쓸 준비 됐는지 봐 줘"라고 하면 school-work-setup이 요구사항을 점검한다. `npx`는 Node.js에 포함돼 있다. 개별 스킬만 쓰고 싶으면 설치 후 필요 없는 스킬 폴더를 지워도 서로 의존하지 않는다(K-에듀파인·교데통 스킬이 나이스 스킬의 로그인 단계를 참조하고, 교데통 전자결재 연계기안은 K-에듀파인 스킬 문서를 참조한다). 알림장 스킬의 첨부 추출은 별도 저장소의 hwpx-automation 스킬을 같은 스킬 폴더에 설치해 쓴다.
 
 ```bash
 npx skills add Engccer/hwpx-automation -g
@@ -64,9 +65,9 @@ MIT (c) 2026 Engccer
 
 **school-work-automation** is a skill bundle that automates the administrative systems used by teachers in Korean public schools with a coding agent (Claude Code and similar): **NEIS** (attendance/leave requests, exam grading and item statistics, external-lecture reports, club, reading, and subject-comment records, payslip download with CSV reconciliation, employment certificates via Gov24), **K-EduFine** (approving incoming official documents, saving document bodies/attachments, drafting and submitting new official documents for external dispatch or internal approval, changing the public-disclosure status of completed documents), **Kyodetong** (the education-data collection platform: receive, attach, save, and submit through internal approval or K-EduFine e-approval), **CoolMessenger** (the in-school messenger: read replies straight from its local SQLite store, collect attachments in bulk, and pre-fill replies; sending is left to the user), and **Alimjang** (the staff notice-board program "알림장관리 3.0": read daily department announcements read-only from the school server's FoxPro DBF share, collect and summarize attachments, search past years, and run a weekday-morning digest via Task Scheduler).
 
-All five skills were built and repeatedly field-tested by the author, a blind teacher, in real school work. They encode hard-won workarounds for these legacy systems: delayed dialog rendering, custom DIV dropdowns that reject `form_input`, calendar-only date fields, iframe file uploaders that need a `DataTransfer` bridge, and an MSHTML PowerShell bridge for K-EduFine's embedded-IE native document windows.
+All five skills were built and repeatedly field-tested by the author, a blind teacher, in real school work. They encode hard-won workarounds for these legacy systems: delayed dialog rendering, custom DIV dropdowns that reject direct form-value setting, calendar-only date fields, iframe file uploaders that need a `DataTransfer` bridge, and an MSHTML PowerShell bridge for K-EduFine's embedded-IE native document windows.
 
-**Requirements:** a coding agent CLI that recognizes skills, the Claude in Chrome browser extension (MCP) for the three web systems, Windows + PowerShell 7 (K-EduFine's native document windows and CoolMessenger's Win32 windows; the NEIS and Kyodetong skills are browser-only), Python 3 for the helper scripts, and a Korean education digital certificate — login is always performed by the user, never automated.
+**Requirements:** a coding agent CLI that recognizes skills, a browser-control extension for the three web systems (verified with Claude in Chrome), Windows + PowerShell 7 (K-EduFine's native document windows and CoolMessenger's Win32 windows; the NEIS and Kyodetong skills are browser-only), Python 3 for the helper scripts, and a Korean education digital certificate — login is always performed by the user, never automated.
 
 **Scope:** verified against the Seoul Metropolitan Office of Education environment (`sen.*` domains). The systems are nationwide; other provinces differ only in subdomains and screen details. CoolMessenger is a school-licensed product independent of the education office (verified on the Gentoo client), as is the Alimjang notice-board program.
 
@@ -77,5 +78,7 @@ All five skills were built and repeatedly field-tested by the author, a blind te
 ```bash
 npx skills add Engccer/school-work-automation -g
 ```
+
+After installing, the **school-work-setup** skill checks the requirements read-only and reports, per skill, what is ready and what is missing.
 
 **License:** MIT (c) 2026 Engccer

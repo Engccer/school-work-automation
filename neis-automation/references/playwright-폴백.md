@@ -4,24 +4,24 @@
 
 ## 언제 쓰나
 
-Claude in Chrome에서 `navigate`·탭 목록은 되는데 **클릭·스크린샷·`javascript_tool`이 모든 탭에서
+브라우저 제어 확장에서 주소 이동·탭 목록은 되는데 **클릭·스크린샷·페이지 JS 실행이 모든 탭에서
 `Cannot attach to this target`**이면 확장의 디버거 연결이 막힌 것이다. 탭을 새로 열거나 탭 그룹을
 다시 만들어도, 크롬 프로세스를 완전히 재시작해도 풀리지 않은 사례가 있으니 오래 붙잡지 말고 넘어온다.
 원인 가설: 학교 Workspace 계정으로 로그인된 크롬 프로필에 관리 정책이 걸려 있다(미확정). → 사례
 
 다른 길이 막히는 이유:
 
-- **앱 내장 브라우저**(`mcp__Claude_Browser__*`): 인증서 프로그램을 인식하지 못한다
+- **에이전트 앱의 내장 브라우저**: 인증서 프로그램을 인식하지 못한다
   ("인증서 로그인용 프로그램 설치가 필요합니다" 알림).
 - **데스크톱 제어**(computer use): 브라우저는 읽기 전용 등급이라 클릭·타이핑이 막힌다.
 
-**Playwright 플러그인**(`mcp__plugin_playwright_playwright__*`)이 띄우는 크롬은 인증서 창이 정상으로
+**Playwright MCP 서버**(`@playwright/mcp`)가 띄우는 크롬은 인증서 창이 정상으로
 뜨고 SSO도 이어진다. 확장과 무관한 별도 크롬 인스턴스라 업무포털 로그인은 그 창에서 새로 한다.
 
 ## 공통 절차
 
-도구는 ToolSearch로 한 번에 로드한다:
-`select:mcp__plugin_playwright_playwright__browser_navigate,mcp__plugin_playwright_playwright__browser_run_code_unsafe,mcp__plugin_playwright_playwright__browser_evaluate,mcp__plugin_playwright_playwright__browser_take_screenshot,mcp__plugin_playwright_playwright__browser_tabs,mcp__plugin_playwright_playwright__browser_click,mcp__plugin_playwright_playwright__browser_handle_dialog,mcp__plugin_playwright_playwright__browser_file_upload`
+쓰는 도구: `browser_navigate`·`browser_run_code_unsafe`·`browser_evaluate`·`browser_take_screenshot`·
+`browser_tabs`·`browser_click`·`browser_handle_dialog`·`browser_file_upload`.
 
 1. **로그인**: `browser_navigate` → `https://sen.eduptl.kr/bpm_lgn_lg00_001.do`. 공지 팝업은 그대로 두고
    `browser_click`(target `button:has-text("교육행정 전자서명 인증서 로그인")`)으로 인증서 창을 띄운 뒤,
@@ -56,7 +56,7 @@ Claude in Chrome에서 `navigate`·탭 목록은 되는데 **클릭·스크린�
    걸거나, 개별 도구 호출이면 `browser_handle_dialog`로 답한다.
 7. **파일 첨부**: 네이티브 "열기" 창을 띄우지 말고 `setInputFiles`로 input에 바로 넣는다. iframe 안
    업로더도 `page.frameLocator('iframe[src*="..."]').locator('input[type=file]').setInputFiles(경로)`로
-   닿으므로 Claude in Chrome의 임시 input·`DataTransfer` 다리가 필요 없다(미실측, 처음 쓸 때 화면
+   닿으므로 브라우저 제어 확장에서 쓰던 임시 input·`DataTransfer` 다리가 필요 없다(미실측, 처음 쓸 때 화면
    표시로 검증).
    **저장은 한 `run_code`로 끝까지 묶을 수 있다**: `.cl-text`가 `저장`인 요소 중심 클릭 →
    `저장하시겠습니까` 문구가 보일 때까지 1초 간격 대기 → `확인` 중심 클릭 → `완료` 문구 대기 →

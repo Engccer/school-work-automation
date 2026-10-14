@@ -45,7 +45,7 @@ metadata:
 
 ## 읽기 절차
 
-필요한 것: `pip install dbfread openpyxl hwpx-tomd`, `hwpx-automation` 스킬(이 스킬과 같은 스킬 폴더에 두거나 `HWPX_AUTOMATION_DIR`로 지정), JDK 21(HWP 변환), pdftotext. 자동 실행에는 `claude` CLI와 `pwsh`(PowerShell 7)도 필요하다.
+필요한 것: `pip install dbfread openpyxl hwpx-tomd`, `hwpx-automation` 스킬(이 스킬과 같은 스킬 폴더에 두거나 `HWPX_AUTOMATION_DIR`로 지정), JDK 21(HWP 변환), pdftotext. 자동 실행에는 에이전트 CLI(기본 `claude`, 바꾸려면 `ALIM_AGENT_CMD`)와 `pwsh`(PowerShell 7)도 필요하다.
 
 ### 1단계: 날짜 결정과 요일 검증
 
@@ -78,7 +78,7 @@ PYTHONIOENCODING=utf-8 python scripts/alim_export.py --from 2026-09-28 --to 2026
     └── <실행일> <키워드 또는 부서> (<시작일>~<종료일>).txt
 ```
 
-출력 루트는 환경 변수 `ALIM_OUT_DIR`로 바꾼다. 값 안의 `{학년도}`는 학년도 숫자로 바뀌고, 상대 경로는 프로젝트 루트(스킬 폴더 `.claude/skills/`의 상위) 기준이다. 없으면 스크립트의 `DEFAULT_OUT`(`알림장/{학년도}`)을 쓴다. 전역 설치(`-g`)라면 프로젝트 루트가 사용자 홈이 되므로 절대 경로를 준다. 자동 실행도 같은 값을 따른다. 한 번만 다른 곳에 두려면 `--out`을 준다. `{학년도}`는 날짜 폴더면 **그 날짜의 학년도**(3월 1일 시작)이고, `검색/`은 실행한 날의 학년도에 쌓인다.
+출력 루트는 환경 변수 `ALIM_OUT_DIR`로 바꾼다. 값 안의 `{학년도}`는 학년도 숫자로 바뀌고, 상대 경로는 프로젝트 루트(스킬 폴더 `.claude/skills/` 등의 상위) 기준이다. 없으면 스크립트의 `DEFAULT_OUT`(`알림장/{학년도}`)을 쓴다. 전역 설치(`-g`)라면 프로젝트 루트가 사용자 홈이 되므로 절대 경로를 준다. 자동 실행도 같은 값을 따른다. 한 번만 다른 곳에 두려면 `--out`을 준다. `{학년도}`는 날짜 폴더면 **그 날짜의 학년도**(3월 1일 시작)이고, `검색/`은 실행한 날의 학년도에 쌓인다.
 
 전달사항 파일은 세 부분이다. 1은 **나와 관련된 항목**(관심 부서 칸 존재 여부와 관심 낱말이 든 줄), 2는 부서별 전달사항 원문, 3은 첨부 목록이다. 관심 부서와 낱말은 환경 변수 `ALIM_MY_DEPTS`·`ALIM_KEYWORDS`(쉼표 구분)로 정하고, 낱말은 실행할 때 `--keywords`로 바꿀 수도 있다. 전달사항이 없는 날(주말·방학)은 폴더를 만들지 않고 `SKIP`만 출력한다.
 
@@ -86,7 +86,7 @@ PYTHONIOENCODING=utf-8 python scripts/alim_export.py --from 2026-09-28 --to 2026
 
 첨부는 아래 스크립트로 텍스트를 뽑고, 아래 규칙으로 요약해 위 산출물 구조의 파일 이름으로 저장한다.
 
-- **첨부 텍스트는 먼저 스크립트로 뽑는다.** Claude가 형식별 변환 경로를 매번 찾게 두지 않는다. → 사례
+- **첨부 텍스트는 먼저 스크립트로 뽑는다.** 에이전트가 형식별 변환 경로를 매번 찾게 두지 않는다. → 사례
 
 ```bash
 PYTHONIOENCODING=utf-8 python scripts/extract_attachments.py "<알림장 날짜 폴더>" "<출력 폴더>"
@@ -101,7 +101,7 @@ PYTHONIOENCODING=utf-8 python scripts/extract_attachments.py "<알림장 날짜 
   | ODT | `content.xml`의 문단·표 직접 파싱. 공문 머리 상자의 글자가 붙어 나올 수 있다 |
   | PDF | PATH의 `pdftotext`, 없으면 Git for Windows 동봉본으로 `-layout -enc UTF-8` 추출. 글자가 거의 없으면 스캔본 경고 |
   | XLSX | openpyxl로 시트별 셀 값을 표로 |
-  | XLS 등 | `FAIL`(미지원). 필요하면 Claude가 직접 연다 |
+  | XLS 등 | `FAIL`(미지원). 필요하면 에이전트가 직접 연다 |
 
   본문 그림 속 글자(포스터 제목, QR 등)는 어느 형식도 추출되지 않는다. 이미지 개수 경고(`WARN ... 본문 이미지 N개`)는 HWP·HWPX만 나온다. ODT·PDF의 그림은 경고 없이 빠진다.
 - 요약 파일은 첨부가 여러 개여도 날짜당 하나로 통합하고, 첨부마다 `첨부<n> <부서>, <문서 제목>` 한 줄로 시작한다.
@@ -141,8 +141,8 @@ PYTHONIOENCODING=utf-8 python scripts/alim_export.py --date 2026-09-29 --stdout 
   Register-ScheduledTask -TaskName '알림장 일일 정리' -Action $a -Trigger $t -Settings $s
   ```
 - 실행 파일은 `scripts/run_daily.ps1`이고 **`pwsh`(PowerShell 7)로 돌린다.** 스크립트가 BOM 없는 UTF-8이라 Windows PowerShell 5.1로 돌리면 한글 경로가 깨진다.
-- 흐름은 서버 접근 확인 → `alim_export.py --date 오늘` → 첨부가 있고 요약 파일이 없으면 `extract_attachments.py`로 `%LOCALAPPDATA%\알림장-자동화\extract\<날짜>\`에 텍스트 추출(14일 지난 추출본은 자동 삭제) → `claude -p`가 **추출된 .md만 읽어** 요약 작성 순이다. 요약 규칙은 프롬프트에 직접 들어 있고, `claude -p`에는 Read·Write·Edit·`Bash(python/grep/awk)`만 허용한다.
-- 이미 요약 파일이 있으면 claude를 부르지 않는다(재실행해도 무해). 다시 쓰게 하려면 `-Force`를 붙이고, 지난 날짜는 `-Date 2026-09-22`로 돌린다.
+- 흐름은 서버 접근 확인 → `alim_export.py --date 오늘` → 첨부가 있고 요약 파일이 없으면 `extract_attachments.py`로 `%LOCALAPPDATA%\알림장-자동화\extract\<날짜>\`에 텍스트 추출(14일 지난 추출본은 자동 삭제) → 에이전트 CLI가 **추출된 .md만 읽어** 요약 작성 순이다. 요약 규칙은 프롬프트에 직접 들어 있다. 기본 에이전트는 Claude Code이고 파일 읽기·쓰기와 `python`·`grep`·`awk` 실행만 허용해 부른다. 다른 에이전트를 쓰려면 환경 변수 `ALIM_AGENT_CMD`에 명령과 옵션을 공백으로 나눠 적는다(공백이 든 경로나 따옴표로 묶은 옵션은 쓸 수 없다). 프롬프트는 마지막 인자로 붙고, 파일 접근 권한은 그 에이전트 설정을 따른다.
+- 이미 요약 파일이 있으면 에이전트를 부르지 않는다(재실행해도 무해). 다시 쓰게 하려면 `-Force`를 붙이고, 지난 날짜는 `-Date 2026-09-22`로 돌린다.
 - 로그는 `%LOCALAPPDATA%\알림장-자동화\log\<날짜>.log`에 남는다. 종료 코드는 0 정상, 1 서버 접근 불가, 2 요약 미생성, 3 `alim_export.py` 실패(원인은 로그의 `export:` 줄)다.
 - 점검은 `Get-ScheduledTaskInfo -TaskName '알림장 일일 정리'`(LastTaskResult·NextRunTime)로 하고, 수동 실행은 `Start-ScheduledTask`로 한다. 해제는 `Unregister-ScheduledTask -TaskName '알림장 일일 정리'`이다.
 - **이 PC에서 알림장 앱이 실행 중일 필요는 없다.** 스크립트는 앱을 거치지 않고 서버 공유 폴더의 DB 파일을 직접 읽는다. 필요한 조건은 서버 PC `관리자`가 켜져 있고 이 PC가 로그온돼 있으며 출력할 프로젝트 폴더에 접근할 수 있는 것이다.
@@ -167,6 +167,6 @@ PYTHONIOENCODING=utf-8 python scripts/alim_export.py --date 2026-09-29 --stdout 
 
 ## 상태
 
-**v1.3.2·v1.3.3**(2026-10-14: 스냅숏을 `ALIM`·`AGICHO` 테이블로 한정해 학생 명렬이 임시 폴더에 복사되지 않게 하고 정리를 `finally`로, `--keywords` 공백·빈 값 정리, 서버 꺼짐 안내, 첨부 파일명 금지 문자 치환, 추출 스크립트의 인코딩·임시 파일·지난 결과 오판 수정, 작업 스케줄러 등록 명령 추가. v1.3.3에서 출력 루트를 `ALIM_OUT_DIR`로 지정하게 하고(같은 날 넣은 `ALIM_PROJECT_ROOT`는 이것으로 대체해 없앰, `~`·환경 변수 확장), `run_daily.ps1`이 경로를 따로 계산하지 않고 `alim_export.py`의 저장 경로를 따르며 claude -p에 그 폴더를 `--add-dir`로 열어 줌). v1.3.0(2026-10-08 스킬 감사: 경위·실측은 [references/cases.md](references/cases.md), 학년도별 현황은 `references/학년도-현황.md`로 옮김. 날짜 폴더를 그 날짜의 학년도에 두고, `run_daily.ps1`이 `alim_export.py` 실패를 종료 코드 3으로 알리며, `--year` 끝날을 2월 말일로, 자동 요약의 '읽지 못했습니다' 조건을 WARN·FAIL로 고침). v1.2(2026-09-28)에서 읽기 절차 정립, 평일 08:40 자동 실행 등록, 첨부 추출 스크립트 도입. 쓰기는 미정립이다. → 사례
+**v1.3.2·v1.3.3**(2026-10-14: 스냅숏을 `ALIM`·`AGICHO` 테이블로 한정해 학생 명렬이 임시 폴더에 복사되지 않게 하고 정리를 `finally`로, `--keywords` 공백·빈 값 정리, 서버 꺼짐 안내, 첨부 파일명 금지 문자 치환, 추출 스크립트의 인코딩·임시 파일·지난 결과 오판 수정, 작업 스케줄러 등록 명령 추가. v1.3.3에서 출력 루트를 `ALIM_OUT_DIR`로 지정하게 하고(같은 날 넣은 `ALIM_PROJECT_ROOT`는 이것으로 대체해 없앰, `~`·환경 변수 확장), `run_daily.ps1`이 경로를 따로 계산하지 않고 `alim_export.py`의 저장 경로를 따르며 에이전트에 그 폴더를 열어 줌). v1.3.0(2026-10-08 스킬 감사: 경위·실측은 [references/cases.md](references/cases.md), 학년도별 현황은 `references/학년도-현황.md`로 옮김. 날짜 폴더를 그 날짜의 학년도에 두고, `run_daily.ps1`이 `alim_export.py` 실패를 종료 코드 3으로 알리며, `--year` 끝날을 2월 말일로, 자동 요약의 '읽지 못했습니다' 조건을 WARN·FAIL로 고침). v1.2(2026-09-28)에서 읽기 절차 정립, 평일 08:40 자동 실행 등록, 첨부 추출 스크립트 도입. 쓰기는 미정립이다. → 사례
 
-스크립트를 고치면 스킬 루트에서 `PYTHONIOENCODING=utf-8 python -m unittest discover -s scripts/tests -p "test_*.py"`와 `pwsh -NoProfile -File scripts/tests/test_run_daily.ps1`을 돌린다(가짜 DB·가짜 명령으로 돌아 서버·작업 스케줄러·claude에 닿지 않는다).
+스크립트를 고치면 스킬 루트에서 `PYTHONIOENCODING=utf-8 python -m unittest discover -s scripts/tests -p "test_*.py"`와 `pwsh -NoProfile -File scripts/tests/test_run_daily.ps1`을 돌린다(가짜 DB·가짜 명령으로 돌아 서버·작업 스케줄러·에이전트에 닿지 않는다).

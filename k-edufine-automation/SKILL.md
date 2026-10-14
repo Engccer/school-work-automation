@@ -2,7 +2,7 @@
 name: k-edufine-automation
 license: MIT
 description: >-
-  서울 업무포털을 거쳐 K-에듀파인(klef.sen.go.kr)의 공문 업무를 자동화한다. 목록은 Claude in Chrome으로, 결재·기안 문서 창(WXSClient)은 PowerShell MSHTML 브리지와 실제 마우스 클릭으로 다룬다. 다음 요청에 사용한다. (1) 결재대기 공문 확인·판독, 접수 공문 본문·첨부 PC저장, 과제카드 지정·문서처리(접수) (2) 새 공문 기안·결재올림(상신): 내부결재, 대외시행 자동발송, 겸직허가 신청 등. "공문 올려 줘", "기안해 줘", "결재 올려 줘" (3) 문서등록대장에서 선례·발송 정보 찾기 (4) 기록물관리 점검 등에 따른 완료 문서 대국민공개여부(공개구분) 수정 (5) HwpODTpatch 보안 프로그램 설치 alert 반복, K-에듀파인 사용자지원서비스 질의. 교데통 자료 제출(전자결재 연계기안 포함)은 kyodetong-submit, 나이스 복무·출장 상신은 neis-automation이 맡는다. K-Edufine, official document, e-approval, drafting, document registry, WXSClient, MSHTML.
+  서울 업무포털을 거쳐 K-에듀파인(klef.sen.go.kr)의 공문 업무를 자동화한다. 목록은 브라우저 제어 확장으로, 결재·기안 문서 창(WXSClient)은 PowerShell MSHTML 브리지와 실제 마우스 클릭으로 다룬다. 다음 요청에 사용한다. (1) 결재대기 공문 확인·판독, 접수 공문 본문·첨부 PC저장, 과제카드 지정·문서처리(접수) (2) 새 공문 기안·결재올림(상신): 내부결재, 대외시행 자동발송, 겸직허가 신청 등. "공문 올려 줘", "기안해 줘", "결재 올려 줘" (3) 문서등록대장에서 선례·발송 정보 찾기 (4) 기록물관리 점검 등에 따른 완료 문서 대국민공개여부(공개구분) 수정 (5) HwpODTpatch 보안 프로그램 설치 alert 반복, K-에듀파인 사용자지원서비스 질의. 교데통 자료 제출(전자결재 연계기안 포함)은 kyodetong-submit, 나이스 복무·출장 상신은 neis-automation이 맡는다. K-Edufine, official document, e-approval, drafting, document registry, WXSClient, MSHTML.
 metadata:
   version: "5.3.1"
 ---
@@ -14,7 +14,7 @@ metadata:
 서울특별시교육청 업무포털을 거쳐 K-에듀파인에 진입해, 들어온 공문을 처리하고(결재대기)
 새 공문을 만들어 올리는(기안) 자동화 워크플로우. **도구가 세 갈래**다.
 
-- **목록·진입**: Claude in Chrome MCP (브라우저). 확장이 모든 탭에서 `Cannot attach to this target`으로
+- **목록·진입**: 브라우저 제어 확장(Claude in Chrome에서 검증). 확장이 모든 탭에서 `Cannot attach to this target`으로
   붙지 않으면 Playwright 크롬으로 바꾼다 → 스킬 `neis-automation`의
   [references/playwright-폴백.md](../neis-automation/references/playwright-폴백.md)
   (2단계의 [K-에듀파인] 새 탭 진입도 그 파일의 절차 2. 5단계 문서 열기로 WXSClient가 뜨는지는 미확인)
@@ -58,7 +58,7 @@ metadata:
 > 전국 공통 계열이라 절차 골격은 그대로 적용된다.
 
 **자동화 경계**: 결재 문서 창은 브라우저 탭이 아니라 네이티브 Windows 창
-(`WXSClient.exe`, 제목 `HCLTAPP_KYUL_`)이라 **브라우저 MCP 도구로는 닿지 않는다**. 그러나
+(`WXSClient.exe`, 제목 `HCLTAPP_KYUL_`)이라 **브라우저 제어 도구로는 닿지 않는다**. 그러나
 그 창의 내부 렌더러가 **임베디드 IE(MSHTML)** 이므로, PowerShell에서 DOM을 직접 잡아
 읽기·클릭·필드 조작을 할 수 있다 → 6단계.
 
@@ -91,16 +91,16 @@ metadata:
 
 - 업무포털 메인 상단 메뉴에서 **[K-에듀파인]** 텍스트 클릭.
 - 새 탭이 같은 탭 그룹에 생성된다 (`klef.sen.go.kr/keris_ui/main.do`).
-  클릭 후 `wait 3~5초` → `tabs_context_mcp`로 새 탭 ID 확보(제목이 `K-에듀파인`인지 확인).
-- **⚠ 메뉴 좌표를 외워 쓰지 말고 매번 `zoom` 으로 확인한다.** 창 폭에 따라
+  클릭 후 `wait 3~5초` → 탭 목록 조회로 새 탭 ID 확보(제목이 `K-에듀파인`인지 확인).
+- **⚠ 메뉴 좌표를 외워 쓰지 말고 매번 확대 캡처로 확인한다.** 창 폭에 따라
   `[K-에듀파인]` 이 **두 줄로 줄바꿈**되어(`[K-` / `에듀파인]`) 텍스트 중심이 크게
   내려가고, 옛 좌표를 누르면 바로 왼쪽의 **[나이스]가 열린다**(새 탭 제목이
-  `4세대 나이스 시스템`). 잘못 열렸으면 그 탭을 `tabs_close_mcp` 로 닫고 아랫줄
+  `4세대 나이스 시스템`). 잘못 열렸으면 그 탭을 탭 닫기로 닫고 아랫줄
   (`에듀파인]`)을 눌러 다시 진입한다. → 사례
-- 사용자 개입 직후 등 일부 상황에서 `navigate`로 klef 직접 이동이 권한 분류기에 거부될 수
+- 사용자 개입 직후 등 일부 상황에서 klef 주소로 바로 가는 것이 에이전트 권한 확인에 거부될 수
   있다. 이때는 navigate를 반복하지 말고 **포털 화면의 [K-에듀파인] 메뉴를 다시 클릭**하는
   방식(페이지 내 클릭)으로 우회한다.
-- **작업이 길어질 것 같으면 시작 전에 K-에듀파인 좌상단 타이머 옆 [연장]** 을 `zoom` 으로
+- **작업이 길어질 것 같으면 시작 전에 K-에듀파인 좌상단 타이머 옆 [연장]** 을 확대 캡처로
   찾아 누른다. 60분으로 리셋된다. 업무포털 탭의 세션 타이머(우측 상단
   "NN:NN후에 로그아웃됩니다")는 별개다.
 
@@ -109,7 +109,7 @@ metadata:
 - 첫 진입 시 "PC 보안 프로그램 설치 통합안내"(install.html)로 리다이렉트될 수 있다.
   필요 프로그램(VeraPort, Ksign, MarkAny WebDRM 등)이 모두 **설치됨**이면 설치할 것은 없다.
 - 이 페이지에서 외부 광고 팝업이 뜨면서 탭이 `about:blank#blocked` 상태로 고착되는 경우가
-  있다. 스크린샷 타임아웃·흰 화면이 반복되면 그 탭을 `tabs_close_mcp`로 닫고, 포털 탭에서
+  있다. 스크린샷 타임아웃·흰 화면이 반복되면 그 탭을 탭 닫기로 닫고, 포털 탭에서
   [K-에듀파인]을 다시 클릭해 새 탭으로 재진입한다.
 - `[HwpODTpatch]` alert 무한 루프와 사용자지원서비스 질의 등록 → [references/한ODT-설치루프.md](references/한ODT-설치루프.md)
 
@@ -119,8 +119,8 @@ metadata:
 - 목록에는 문서 제목·기안 부서·긴급 여부·첨부 건수가 표시된다.
 - **빠른 확인 대안**: 업무포털 메인의 "K-에듀파인 문서함" 위젯(결재대기 탭)으로도
   대기 건수를 확인할 수 있다. 처리 후 0건 검증에도 이 위젯이 유용하다.
-- **결재대기 그리드는 iframe 안**이라 `find` 도구가 못 찾는다("해당 텍스트 없음"으로
-  실패한다). 행 클릭은 스크린샷 좌표로, 행 내용 추출은 `javascript_tool` 에서
+- **결재대기 그리드는 iframe 안**이라 요소 찾기 도구가 못 찾는다("해당 텍스트 없음"으로
+  실패한다). 행 클릭은 스크린샷 좌표로, 행 내용 추출은 페이지 JS 실행에서
   iframe 을 재귀 순회하며 `tr.innerText` 를 긁는 방식으로 한다.
 
 ### 5단계: 문서 열기 (브라우저 → 네이티브 창)
@@ -139,7 +139,7 @@ metadata:
   ```powershell
   Get-Process WXSClient | Select-Object Id, StartTime, MainWindowTitle
   ```
-  `Bash` 도구에서 `powershell.exe -Command "Get-Process WXSClient ..."` 를 부르면 창이 실제로
+  에이전트의 셸 실행 도구에서 `powershell.exe -Command "Get-Process WXSClient ..."` 를 부르면 창이 실제로
   떠 있어도 **exit 1 로 실패**해 빈 결과와 구분이 안 된다. `Get-Process | Where MainWindowTitle -ne ""`
   류의 일반 목록에는 **안 잡힐 때가 있고**(창 제목이 비어 보이는 시점 존재), UI Automation
   최상위 열거도 가상 데스크톱 전환 시 창을 놓친다. 같은 이유로 `kyul_dom.ps1` 이 "창 없음"을
@@ -205,22 +205,22 @@ pwsh -STA -NoProfile -ExecutionPolicy Bypass -File scripts/mshtml_dom.ps1 -Title
 
 - **화면 구조**: Nexacro 셸 + iframe 다층 구조(websocket 브리지, 업무화면 iframe,
   OZ 뷰어 iframe). DOM 조회 시 iframe을 재귀 탐색해야 한다.
-- **javascript_tool 비동기 결과**: async IIFE/Promise 반환값은 `{}`로 직렬화된다.
+- **페이지 JS 실행 비동기 결과**: async IIFE/Promise 반환값은 `{}`로 직렬화된다.
   결과를 `window` 변수에 저장해 두고, 별도 호출에서 `JSON.stringify`로 동기 조회할 것.
 - **출력 차단**: 함수 소스나 URL 전체를 반환하면 세션 토큰 감지로 출력이
   "[BLOCKED: Cookie/query string data]"로 대체된다. 경로·불리언·식별자만 정규식으로
   추출해 반환하면 통과한다.
 - **사용자가 브라우저를 껐다 켜면 확장이 새 연결로 잡힌다.** 이전 연결은 목록에
-  그대로 남아 있고 `select_browser` 도 성공하므로, 모르고 계속 쓰면 **탭이 만들어지고
+  그대로 남아 있고 브라우저 선택도 성공하므로, 모르고 계속 쓰면 **탭이 만들어지고
   스크린샷도 찍히는데 사용자 화면에는 아무것도 안 보인다**("이 컴퓨터 브라우저에 안
-  열렸어"). `list_connected_browsers` 의 `name` 은 **목록 순서 라벨이라 고정 식별자가
+  열렸어"). 연결된 브라우저 목록 조회의 `name` 은 **목록 순서 라벨이라 고정 식별자가
   아니다** — `Browser 1` 이 다른 창을 가리키게 된다. 판단 기준은 **`connectedAt` 이
   가장 큰 로컬(`isLocal:true`) 항목**. 사용자가 브라우저를 재시작했다고 하면 반드시
   목록부터 다시 뽑는다.
 
 ## 일반 원칙
 
-- 여러 조작은 `browser_batch`로 묶어 실행. 클릭 전 최신 스크린샷으로 좌표 확인.
+- 여러 조작은 한 번에 묶어 실행. 클릭 전 최신 스크린샷으로 좌표 확인.
 - 인증서 비밀번호·개인 자격증명 입력은 절대 자동화하지 않는다.
 - **세션이 죽으면 창이 줄줄이 뜬다 — 당황하지 말고 순서대로 정리한다.**
   팝업 내부를 스크립트로 험하게 다루면 서버 세션이 끊길 수 있다(→ 사례). 증상:

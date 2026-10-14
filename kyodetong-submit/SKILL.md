@@ -40,8 +40,8 @@ metadata:
 2. **인증서 로그인은 사용자(교사 본인)가 직접 수행**한다(자동화 금지 영역).
    상세는 스킬 `neis-automation`의 1~3단계와 동일하다.
 3. 업무포털 메인 상단 메뉴에서 **[교데통]** 클릭 → **새 탭**이 열리고 `sen.edmgr.kr/taskPotlMain`로 SSO 자동 로그인.
-   창 폭이 좁으면 [교데통]이 잘려 보이므로 `find`로 링크 ref를 잡는 편이 빠르다.
-   Claude in Chrome이 모든 탭에서 `Cannot attach to this target`으로 붙지 않으면 Playwright 크롬으로 바꾼다
+   창 폭이 좁으면 [교데통]이 잘려 보이므로 요소 찾기로 링크 ref를 잡는 편이 빠르다.
+   브라우저 제어 확장이 모든 탭에서 `Cannot attach to this target`으로 붙지 않으면 Playwright 크롬으로 바꾼다
    → 스킬 `neis-automation`의 [references/playwright-폴백.md](../neis-automation/references/playwright-폴백.md).
 4. 상단 메뉴 **데이터취합 > 제출자료**. (하위: 요청자료 / 제출자료 / 수신자관리 / 기관요청자료 / 기관제출자료 / 서식목록 / 요청자료인계인수 / 제출자료인계인수)
 
@@ -111,7 +111,7 @@ metadata:
 **열람제한·열람범위는 저장 전에 반드시 선택해야 한다.** 둘 다 초기값이 비어 있고, 안 고르고 저장하면 *"열람제한 및 열람범위 을(를) 설정 후 저장하십시오."* 알림이 뜬다.
 - `열람제한` = 설정 / 설정안함, `열람범위` = 개인 / 기관. 온라인도움말은 캡처 이미지뿐이라 설명이 없다.
 - 부서 공동 업무(부장·관리자가 열람·인계해야 하는 건)의 기본값은 **설정안함 + 기관**. 저장 후에도 다시 고칠 수 있다.
-- 이 라디오는 커스텀 DIV라 `document.querySelectorAll('input[type=radio]')`가 **빈 배열**이다. 좌표 클릭 후 `zoom`으로 선택 상태(파란 점)를 확인할 것.
+- 이 라디오는 커스텀 DIV라 `document.querySelectorAll('input[type=radio]')`가 **빈 배열**이다. 좌표 클릭 후 확대 캡처로 선택 상태(파란 점)를 확인할 것.
 
 **[임시저장]** 과 **[저장]** 이 따로 있다. 제출을 나중에 할 거면 [임시저장]으로 서버에 올려 둔다.
 - [임시저장] → *"임시저장 하시겠습니까?"* → [예] → 업로드 진행 바("파일 업로드 프로세스를 시작합니다" → "완료") → **"임시저장 되었습니다."**
@@ -186,14 +186,14 @@ metadata:
 
 확인된 경로 — 최상위 문서에 임시 input을 만들어 다리를 놓는다. (a11y 트리가 iframe 내부로 내려가지 않아 Uppy input에 직접 ref를 못 붙인다) → 사례
 
-1. 최상위 문서에 임시 file input 생성 (`find`가 잡도록 `aria-label`을 붙이고 화면에 보이게 스타일 지정)
+1. 최상위 문서에 임시 file input 생성 (요소 찾기가 잡도록 `aria-label`을 붙이고 화면에 보이게 스타일 지정)
    ```js
    const t=document.createElement('input'); t.type='file'; t.id='__tmpUp';
    t.setAttribute('aria-label','임시업로드입력');
    t.style.cssText='position:fixed;top:10px;left:10px;z-index:999999;width:300px;height:30px;';
    document.body.appendChild(t);
    ```
-2. `find`로 ref를 얻어 **`file_upload` 도구로 실제 파일을 넣는다.**
+2. 요소 찾기로 ref를 얻어 **파일 업로드 도구로 실제 파일을 넣는다.**
 3. iframe 컨텍스트의 `DataTransfer`로 옮기고 `change`를 디스패치한다.
    ```js
    const src=document.getElementById('__tmpUp');
@@ -213,11 +213,11 @@ Playwright 폴백에서는 1~3·5번의 다리가 필요 없다. 제출파일 �
 
 ## 자동화 시행착오 메모
 
-- **`javascript_tool`의 `document.body.innerText`가 화면 전체를 못 준다.** 이 앱은 목록이 `<table>`이 아니고 라우팅으로 DOM이 교체돼, 같은 코드를 두 번 돌리면 결과 길이가 크게 달라진다. 목록·상세 본문 판독은 스크린샷을 우선하고, JS는 첨부 조작과 값 검증 위주로 쓸 것. 상단 상태바 카운터 매칭(아래 진행 검증 예)은 JS로 해도 된다.
+- **페이지 JS 실행으로 읽은 `document.body.innerText`가 화면 전체를 못 준다.** 이 앱은 목록이 `<table>`이 아니고 라우팅으로 DOM이 교체돼, 같은 코드를 두 번 돌리면 결과 길이가 크게 달라진다. 목록·상세 본문 판독은 스크린샷을 우선하고, JS는 첨부 조작과 값 검증 위주로 쓸 것. 상단 상태바 카운터 매칭(아래 진행 검증 예)은 JS로 해도 된다.
 - **상단 메뉴 드롭다운이 stale하게 남는다.** 새 탭을 만들어 메뉴를 다시 열면 직전 메뉴(예: 데이터활용)가 계속 표시되며 클릭이 엉뚱한 데로 간다. 탭을 새로 파기보다 **작업 탭 하나에서 [목록] 버튼으로 오가는 편이 안전**하다.
 - **창 크기가 도중에 바뀌면 좌표가 전부 어긋난다.** 클릭 전 항상 최신 스크린샷으로 좌표를 다시 잡을 것. → 사례
 - 다이얼로그 버튼은 대개 좌표 클릭이 통하지만, **뷰포트가 축소(브라우저 줌 아웃)되면 스크린샷 좌표와 CSS 좌표가 어긋나 클릭이 통째로 빗나간다.** 이 상태에서는 스크린샷에서 읽은 좌표로 눌러도 아무 일이 일어나지 않는다. → 사례
-  - 판별: `javascript_tool`로 `{iw:innerWidth, ih:innerHeight, dpr:devicePixelRatio}`를 찍어 스크린샷 크기와 비교한다. 비율이 1이 아니면 좌표 클릭을 포기한다.
+  - 판별: 페이지 JS 실행으로 `{iw:innerWidth, ih:innerHeight, dpr:devicePixelRatio}`를 찍어 스크린샷 크기와 비교한다. 비율이 1이 아니면 좌표 클릭을 포기한다.
   - **더 신뢰할 수 있는 우회는 DOM 이벤트 디스패치다.** 이 앱(`cl-*` 클래스의 CL 프레임워크)에서 실제로 통한 코드:
     ```js
     const t = [...document.querySelectorAll('div.cl-text')]
@@ -233,7 +233,7 @@ Playwright 폴백에서는 1~3·5번의 다리가 필요 없다. 제출파일 �
     ```
     `pointerdown`까지 포함해야 반응한다. `click()`이나 `MouseEvent('click')` 단독은 무시된다.
   - **버튼 텍스트는 `<button>`이 아니라 `div.cl-text`에 들어 있다.** `querySelectorAll('button')`로 "확인"을 찾으면 빈 배열이 나오므로 없는 줄 알고 헤매기 쉽다. 클릭 대상은 조상의 `[role=button]`(`cl-control cl-button`).
-- **스크린샷이 stale하게 굳는 일이 있다.** 창 크기가 바뀐 직후 연속 캡처가 이전 프레임을 계속 돌려줘, 이미 닫힌 다이얼로그가 화면에 남아 있는 것처럼 보였다. 화면 상태 판정은 스크린샷만 믿지 말고 `javascript_tool`로 교차 확인한다. 예: 팝업 잔존 여부 `[...document.querySelectorAll('div.cl-text')].filter(x=>x.offsetParent&&/하시겠습니까|되었습니다/.test(x.innerText))`, 진행 검증 `document.body.innerText.match(/데이터취합\([^)]*\)/)`.
+- **스크린샷이 stale하게 굳는 일이 있다.** 창 크기가 바뀐 직후 연속 캡처가 이전 프레임을 계속 돌려줘, 이미 닫힌 다이얼로그가 화면에 남아 있는 것처럼 보였다. 화면 상태 판정은 스크린샷만 믿지 말고 페이지 JS 실행으로 교차 확인한다. 예: 팝업 잔존 여부 `[...document.querySelectorAll('div.cl-text')].filter(x=>x.offsetParent&&/하시겠습니까|되었습니다/.test(x.innerText))`, 진행 검증 `document.body.innerText.match(/데이터취합\([^)]*\)/)`.
 - 저장 전 데이터는 클라이언트에만 있다. **탭이 유실되면 첨부·설정이 전량 소실**되므로 조작이 끝나면 바로 [임시저장].
 
 ## K-에듀파인 용어 대응

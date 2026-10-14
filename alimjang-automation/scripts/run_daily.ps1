@@ -3,9 +3,10 @@
   1) alim_export.py 로 전달사항 텍스트 저장 + 첨부 복사
   2) 첨부가 있고 요약 파일이 아직 없으면 extract_attachments.py 로 첨부를 텍스트로 추출
      (%LOCALAPPDATA%\알림장-자동화\extract\<날짜>\, 14일 지나면 삭제)
-  3) claude -p 는 추출된 텍스트만 읽어 첨부 요약 작성
+  3) 에이전트 CLI(ALIM_AGENT_CMD, 기본 Claude Code)가 추출된 텍스트만 읽어 첨부 요약 작성
   로그: %LOCALAPPDATA%\알림장-자동화\log\<날짜>.log
 
+  ALIM_AGENT_CMD: 공백으로 나눈 명령과 옵션. 프롬프트는 마지막 인자로 붙는다.
   사용(스킬 루트에서): pwsh -NoProfile -File scripts/run_daily.ps1 [-Date 2026-09-22] [-Force]
 #>
 param(
@@ -67,12 +68,20 @@ $extLines
 작성 후 연속 빈 줄 검사(grep -nE "^$" | awk)를 한다. 질문하지 말고 끝까지 처리한 뒤, 마지막에 요약 파일 경로와 첨부별 한 줄 요지만 출력해.
 "@
 
-Write-Log "claude -p 시작 (첨부 $($atts.Count)건, 추출 $($mds.Count)건)"
+$agentCmd = @($env:ALIM_AGENT_CMD -split '\s+' | Where-Object { $_ })
+Write-Log "에이전트 시작 (첨부 $($atts.Count)건, 추출 $($mds.Count)건)"
 Push-Location $projectRoot
 try {
-  $res = & claude -p $prompt --add-dir $folder $work `
-    --allowedTools 'Read' 'Write' 'Edit' 'Bash(python:*)' 'Bash(grep:*)' 'Bash(awk:*)' 2>&1
-  $res | ForEach-Object { Write-Log "claude: $_" }
+  if ($agentCmd.Count) {
+    # 프롬프트를 마지막 인자로 붙인다. 파일 접근 권한은 그 에이전트 설정(명령에 넣은 옵션)을 따른다.
+    $exe = $agentCmd[0]
+    $rest = @($agentCmd | Select-Object -Skip 1)
+    $res = & $exe @rest $prompt 2>&1
+  } else {
+    $allowed = 'Read', 'Write', 'Edit', 'Bash(python:*)', 'Bash(grep:*)', 'Bash(awk:*)'
+    $res = & claude -p $prompt --add-dir $folder $work --allowedTools @allowed 2>&1  # sanitize: allow 기본 에이전트(검증 환경)
+  }
+  $res | ForEach-Object { Write-Log "agent: $_" }
 } finally { Pop-Location }
 
 if (Test-Path -LiteralPath $summary) { Write-Log "완료: $summary"; exit 0 }

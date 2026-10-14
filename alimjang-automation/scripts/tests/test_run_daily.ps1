@@ -1,5 +1,5 @@
 <#
-  run_daily.ps1 밀폐 시험. 서버·작업 스케줄러·claude 를 부르지 않는다.
+  run_daily.ps1 밀폐 시험. 서버·작업 스케줄러·에이전트를 부르지 않는다.
   실행(스킬 루트에서): pwsh -NoProfile -File scripts/tests/test_run_daily.ps1
   - 시험용 프로젝트 트리를 임시 폴더에 만들고 run_daily.ps1 사본을 그 안에서 돌린다.
   - Test-Path(서버 확인)·python·claude 는 같은 이름의 함수로 가린다(함수가 명령보다 먼저 잡힌다).
@@ -166,6 +166,28 @@ try {
   $folder = Join-Path $fx.Proj (($def -replace '\{학년도\}', '2020') + '\2020-03-02(월)')
   Assert ($code -eq 0) "기본 출력 루트 → 0 (실제 $code)"
   Assert (Microsoft.PowerShell.Management\Test-Path -LiteralPath (Join-Path $folder '2020-03-02(월) 알림장 첨부 요약.txt')) "환경 변수가 없으면 DEFAULT_OUT($def)에 요약이 생긴다"
+} finally { Remove-Item -Recurse -Force $fx.Tmp }
+
+# 8. ALIM_AGENT_CMD 가 있으면 그 명령을 부르고 프롬프트를 마지막 인자로 붙인다(claude 는 부르지 않는다)
+function fakeagent { $global:agentArgs = @($args); $global:prompt = $null
+  if ($args[-1] -match '출력 파일: "([^"]+)"') { '요약' | Set-Content -Encoding utf8NoBOM $Matches[1] }
+  $global:LASTEXITCODE = 0 }
+$global:fx = New-Fixture; $global:mode = 'real'; $global:prompt = $null; $global:agentArgs = $null
+try {
+  Write-Rows $fx '2020-03-02' 'H03021.PDF'
+  $env:ALIM_AGENT_CMD = 'fakeagent  --opt x'
+  try { $code = Invoke-Daily $fx '2020-03-02' } finally { Remove-Item Env:ALIM_AGENT_CMD -ErrorAction SilentlyContinue }
+  Assert ($code -eq 0) "ALIM_AGENT_CMD → 0 (실제 $code)"
+  Assert ($global:agentArgs.Count -eq 3 -and $global:agentArgs[0] -eq '--opt' -and $global:agentArgs[1] -eq 'x') '명령의 옵션이 그대로 넘어간다'
+  Assert ("$($global:agentArgs[-1])" -match '알림장 첨부 요약') '프롬프트가 마지막 인자다'
+  Assert ($null -eq $global:prompt) 'ALIM_AGENT_CMD 가 있으면 claude 를 부르지 않는다'
+} finally { Remove-Item -Recurse -Force $fx.Tmp }
+$global:fx = New-Fixture; $global:mode = 'real'; $global:prompt = $null; $global:agentArgs = $null
+try {
+  Write-Rows $fx '2020-03-02' 'H03021.PDF'
+  $env:ALIM_AGENT_CMD = 'fakeagent'
+  try { $code = Invoke-Daily $fx '2020-03-02' } finally { Remove-Item Env:ALIM_AGENT_CMD -ErrorAction SilentlyContinue }
+  Assert ($code -eq 0 -and $global:agentArgs.Count -eq 1) "명령만 있으면 프롬프트 하나만 넘어간다 (인자 $($global:agentArgs.Count)개)"
 } finally { Remove-Item -Recurse -Force $fx.Tmp }
 
 if ($fails) { Write-Host "$fails 건 실패"; exit 1 }

@@ -43,7 +43,7 @@
   ```
   **TAP 어댑터 Status가 Up이고 포털 443이 True**여야 연결이다. 어느 어댑터에 10.x가 붙어
   있는지는 근거가 아니다.
-- **작업 시작 전에 이 확인부터 한다.** 미연결 상태에서 업무포털로 `navigate`하면 도메인
+- **작업 시작 전에 이 확인부터 한다.** 미연결 상태에서 업무포털로 주소 이동하면 도메인
   권한 문제와 구분되지 않는 무응답이 나와 엉뚱한 곳을 헤매게 된다.
 - **터널이 오래 유지되지 않을 수 있다.** 끊기면 K-에듀파인 등이 다시 무응답이 되므로, 원격 작업 중
   응답이 사라지면 EVPN 재연결부터 확인한다(웹 재로그인 → [Run VPN] → 클라이언트 재로그인). → 사례
@@ -51,7 +51,7 @@
   클릭을 삼킨다.** 키보드 탐색은 영향 없음(스크린 리더 사용자는 무관). 자동화로 조작할 때는
   팝업 [닫기](`closePop()`)를 먼저 실행해야 다른 요소를 클릭할 수 있다.
 - **페이지 버튼(LOGIN·Run VPN·Close 등)이 CDP 합성 클릭에 반응하지 않는다.**
-  `javascript_tool`로 `element.click()`을 직접 호출해야 한다(버튼 id: `loginButton`,
+  페이지 JS 실행으로 `element.click()`을 직접 호출해야 한다(버튼 id: `loginButton`,
   `runVpnBtn2`, `closeBtn` 등).
 - **상태 표시 "Installed No"는 미설치 확정이 아니다.** 클라이언트가 설치돼 있어도 실행 중이
   아니면 No로 표시된다. `C:\ProgramData\AXGATE\AXGATE VPN Client\Bin\AxgateVpnClient.exe`를
