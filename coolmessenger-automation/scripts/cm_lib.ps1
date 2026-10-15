@@ -184,6 +184,14 @@ function Read-CMList {
     return @{ Count = $count; Rows = $rows }
 }
 
+function Find-CMAttachmentRow {
+    <# Read-CMList 행 가운데 첨부파일명(C3)이 -Match 와일드카드와 맞는 것을 고른다.
+       -From을 주면 보낸사람(C0)에 그 문구가 들어간 것만 남긴다(와일드카드 문자는 글자 그대로). #>
+    param($Rows, [string]$Match, [string]$From)
+    $who = if ($From) { '*' + [WildcardPattern]::Escape($From) + '*' }
+    @($Rows | Where-Object { $_.C3 -like $Match -and (-not $who -or $_.C0 -like $who) })
+}
+
 function Get-CMRowPoint {
     <# 목록 행의 화면 좌표. 행이 추가되면 인덱스가 밀리므로 클릭 직전에 다시 구한다. #>
     param([IntPtr]$List, [int]$Index)

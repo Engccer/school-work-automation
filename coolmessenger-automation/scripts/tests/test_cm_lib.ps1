@@ -1,4 +1,4 @@
-# cm_lib.ps1·cm_reply.ps1 시험. 창 찾기 함수를 가짜로 바꿔 실제 쿨메신저 창은 건드리지 않는다.
+# cm_lib.ps1·cm_reply.ps1·cm_save_attachments.ps1 시험. 창 찾기 함수를 가짜로 바꿔 실제 쿨메신저 창은 건드리지 않는다.
 #
 #   pwsh -NoProfile -File scripts/tests/test_cm_lib.ps1      # 실패가 있으면 종료 코드 1
 
@@ -67,6 +67,27 @@ if ($hasNotice) {
 $reply = Get-Content (Join-Path $PSScriptRoot '..\cm_reply.ps1') -Raw -Encoding utf8
 Check "cm_reply.ps1: '발송 완료' 문구가 없다" ($reply -notmatch '발송 완료')
 Check 'cm_reply.ps1: 회신 창 핸들을 그대로 넘겨 안내한다' ($reply -match 'Get-CMSendNotice -Compose \$compose ')
+
+# ---- 첨부 대상 고르기: 파일명 패턴과 보낸사람 필터
+$rows = @(
+    [pscustomobject]@{ Index = 0; C0 = '홍길동'; C3 = '체크리스트.hwp' },
+    [pscustomobject]@{ Index = 1; C0 = '김철수'; C3 = '체크리스트.hwp' },
+    [pscustomobject]@{ Index = 2; C0 = '홍길동'; C3 = '사진.jpg' },
+    [pscustomobject]@{ Index = 3; C0 = '이[영]희'; C3 = '계획서.hwp' }
+)
+$r = Find-CMAttachmentRow -Rows $rows -Match '*체크리스트*'
+Check 'Find-CMAttachmentRow: -From 없으면 파일명만 본다' ($r.Count -eq 2) "count=$($r.Count)"
+$r = Find-CMAttachmentRow -Rows $rows -Match '*체크리스트*' -From '홍길동'
+Check 'Find-CMAttachmentRow: -From으로 보낸사람을 가린다' ($r.Count -eq 1 -and $r[0].C0 -eq '홍길동') "count=$($r.Count)"
+$r = Find-CMAttachmentRow -Rows $rows -Match '*' -From '홍'
+Check 'Find-CMAttachmentRow: -From은 부분일치다' ($r.Count -eq 2) "count=$($r.Count)"
+$r = Find-CMAttachmentRow -Rows $rows -Match '*' -From '이[영]희'
+Check 'Find-CMAttachmentRow: -From의 대괄호는 글자 그대로 본다' ($r.Count -eq 1 -and $r[0].Index -eq 3) "count=$($r.Count)"
+$r = Find-CMAttachmentRow -Rows $rows -Match '*.pdf' -From '홍길동'
+Check 'Find-CMAttachmentRow: 맞는 게 없으면 0건' ($r.Count -eq 0) "count=$($r.Count)"
+
+$save = Get-Content (Join-Path $PSScriptRoot '..\cm_save_attachments.ps1') -Raw -Encoding UTF8
+Check 'cm_save_attachments.ps1: 행을 다시 찾을 때 보낸사람까지 맞춘다' ($save -match '\$_\.C3 -eq \$file -and \$_\.C0 -eq \$sender')
 
 ""
 if ($script:fail) { "실패 $($script:fail)건"; exit 1 } else { '모두 통과'; exit 0 }

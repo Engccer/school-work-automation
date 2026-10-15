@@ -2,6 +2,7 @@
 #
 #   pwsh -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest "$env:USERPROFILE\Documents\수합\체크리스트"
 #   pwsh -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest '...' -WhatIf   # 대상만 확인
+#   pwsh -File scripts/cm_save_attachments.ps1 -Match '*' -From '홍길동' -Dest '...'       # 그 사람이 보낸 첨부만
 #
 # 저장 위치는 레지스트리 DownPath로 정해져 있고 선택할 수 없다.
 # 그래서 저장된 파일을 파일명으로 찾아 -Dest로 옮기는 방식으로 동작한다.
@@ -10,6 +11,7 @@
 param(
     [Parameter(Mandatory)][string]$Match,      # 첨부파일명 와일드카드
     [Parameter(Mandatory)][string]$Dest,       # 모아 둘 폴더
+    [string]$From,                             # 보낸사람 이름에 이 문구가 들어간 것만
     [string[]]$WatchDirs,                      # 저장 위치 후보(생략 시 기본값)
     [int]$DownloadTimeoutSec = 25
 )
@@ -62,8 +64,8 @@ $msgWin = Open-CMArchive
 $list = Find-CMControl -Parent $msgWin -Class 'SysListView32' -TextLike '메시지 리스트*'
 $save = Find-CMControl -Parent $msgWin -Class 'Button' -TextLike '모든파일 저장*'
 
-$targets = (Read-CMList -List $list).Rows | Where-Object { $_.C3 -like $Match }
-Write-Host ("대상 {0}건 (패턴 {1})" -f $targets.Count, $Match)
+$targets = @(Find-CMAttachmentRow -Rows (Read-CMList -List $list).Rows -Match $Match -From $From)
+Write-Host ("대상 {0}건 (패턴 {1}{2})" -f $targets.Count, $Match, $(if ($From) { ", 보낸사람 $From" }))
 
 $result = @()
 foreach ($t in $targets) {
@@ -76,8 +78,8 @@ foreach ($t in $targets) {
     }
     if (-not $PSCmdlet.ShouldProcess($sender, '첨부 저장')) { continue }
 
-    # 새 메시지가 들어오면 행이 밀리므로 인덱스를 다시 찾는다.
-    $cur = (Read-CMList -List $list).Rows | Where-Object { $_.C3 -eq $file } | Select-Object -First 1
+    # 새 메시지가 들어오면 행이 밀리므로 인덱스를 다시 찾는다. 같은 파일명을 여러 사람이 보냈을 수 있어 보낸사람까지 맞춘다.
+    $cur = (Read-CMList -List $list).Rows | Where-Object { $_.C3 -eq $file -and $_.C0 -eq $sender } | Select-Object -First 1
     if (-not $cur) {
         Write-Host "  MISS  $sender — 목록에서 사라짐"
         $result += [pscustomobject]@{ 보낸사람=$sender; 파일=$file; 결과='목록없음' }
