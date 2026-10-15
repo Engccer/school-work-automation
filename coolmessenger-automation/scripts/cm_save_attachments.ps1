@@ -76,7 +76,7 @@ foreach ($t in $targets) {
     }
     if (-not $PSCmdlet.ShouldProcess($sender, '첨부 저장')) { continue }
 
-    # 새 회신이 들어오면 행이 밀리므로 인덱스를 다시 찾는다.
+    # 새 메시지가 들어오면 행이 밀리므로 인덱스를 다시 찾는다.
     $cur = (Read-CMList -List $list).Rows | Where-Object { $_.C3 -eq $file } | Select-Object -First 1
     if (-not $cur) {
         Write-Host "  MISS  $sender — 목록에서 사라짐"

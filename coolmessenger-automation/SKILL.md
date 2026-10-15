@@ -2,18 +2,19 @@
 name: coolmessenger-automation
 license: MIT
 description: >-
-  교내 메신저 쿨메신저(CoolMessenger)로 이미 주고받은 메시지를 다룬다. 로컬 SQLite DB를 읽어 회신을 수합하고, 첨부파일을 일괄로 내려받아 정리하며, 회신·새 메시지 작성 창을 채운다(보내기는 사용자 확인 뒤). 다음 요청에 사용한다. "선생님들 답장 왔는지 봐 줘", "회신 취합해 줘", 대상자 명단과 대조한 미회신자 파악, "첨부파일 다 받아서 정리해 줘", 보낸·받은 메시지 검색·내보내기, 회신 보내기 준비, 지난번과 같은 받는사람에게 새 메시지 보내기([전체 회신]으로 받는사람 재사용). 보낼 문안을 새로 쓰는 일은 이 스킬의 범위 밖이다. CoolMessenger, read replies, reply tracking, collect attachments, message database.
+  교내 메신저 쿨메신저(CoolMessenger)로 이미 주고받은 메시지를 다룬다. 로컬 SQLite DB를 읽어 받은·보낸 메시지와 회신을 확인·수합하고, 받은 메시지의 첨부파일을 내려받아 정리하며, 회신·새 메시지 작성 창을 채운다(보내기는 사용자 확인 뒤). 다음 요청에 사용한다. "선생님들 답장 왔는지 봐 줘", "회신 취합해 줘", 대상자 명단과 대조한 미회신자 파악, "첨부파일 다 받아서 정리해 줘", 쿨메신저로 받은 메시지의 첨부파일 내려받기, 보낸·받은 메시지 검색·내보내기, 회신 보내기 준비, 지난번과 같은 받는사람에게 새 메시지 보내기([전체 회신]으로 받는사람 재사용). 보낼 문안을 새로 쓰는 일은 이 스킬의 범위 밖이다. CoolMessenger, read replies, reply tracking, download received attachments, message database.
 metadata:
-  version: "1.2.2"
+  version: "1.3.0"
 ---
 
 # 쿨메신저 자동화
 
-교내 메신저 **쿨메신저(CoolMessenger Gentoo)**를 다룬다. 안내 쿨메시지를 보낸 뒤
-회신을 수합하는 업무(교육청 프로그램 회신 수합, 교과협의, 각종 제출 독촉)가 주 용도다.
+교내 메신저 **쿨메신저(CoolMessenger Gentoo)**를 다룬다. 받은·보낸 메시지 읽기와 받은 메시지의
+첨부파일 내려받기가 기본 기능이고, 안내 쿨메시지를 보낸 뒤 회신을 수합하는 업무(교육청 프로그램 회신 수합, 교과협의, 각종 제출 독촉)가
+대표 용례다.
 
 > 쿨메시지 **문안 작성**은 이 스킬의 범위 밖이다. 이 스킬은 발송 이후의
-> 회신 확인·첨부 수집·집계를 맡는다.
+> 회신 확인·집계와, 회신 여부와 무관한 받은 메시지 첨부 내려받기를 맡는다.
 
 ## 먼저 알아야 할 구조
 
@@ -74,7 +75,12 @@ python scripts/cm_export.py --sent --since 2026-09-01 --format json
 1. 본문에 인용 표시(`님이 보낸글`)가 있을 것 — 회신이라는 증거
 2. 보낸사람이 대상자 명단에 있을 것
 
-## 2. 첨부파일 일괄 수집
+## 2. 받은 메시지 첨부파일 내려받기
+
+회신이든 아니든 메시지 관리함의 받은 메시지라면 똑같이 내려받는다. 회신 첨부 수합은 그 대표 용례다.
+파일명을 모르면 먼저 `cm_export.py --from <보낸사람> --since <날짜>`로 `첨부` 칸의 파일명을 확인해 `-Match`에 넣는다.
+스크립트는 보낸사람이 아니라 파일명으로 고르므로, 같은 파일명이 여러 사람에게서 왔으면 두 번째부터 `이미보관`으로 건너뛴다.
+첨부가 여러 건인 메시지는 아래 「`그룹파일`」 절을 따르고, 관리함 목록 앞쪽 200행보다 오래된 메시지는 내보내기에는 보여도 받아지지 않는다.
 
 ```bash
 pwsh -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest "$env:USERPROFILE\Documents\수합\체크리스트"
@@ -254,7 +260,7 @@ foreach ($t in [CM]::Tops([uint32](Get-CMPid))) {
 |---|---|
 | `scripts/cm_export.py` | DB에서 메시지 내보내기(CSV/JSON) — 읽기 전용 |
 | `scripts/cm_lib.ps1` | 창·목록·대화상자 조작 공용 함수 |
-| `scripts/cm_save_attachments.ps1` | 첨부 일괄 수집 |
+| `scripts/cm_save_attachments.ps1` | 받은 메시지 첨부 내려받기 |
 | `scripts/cm_reply.ps1` | 회신 창 열고 본문 채우기(`-Send`로 발송까지) |
 | `scripts/tests/` | 가짜 DB·가짜 창 함수로 도는 시험(`python -m unittest discover -s scripts/tests`, `pwsh -File scripts/tests/test_cm_lib.ps1`) |
 | `references/cases.md` | 규칙의 근거가 된 경위·실적 |
