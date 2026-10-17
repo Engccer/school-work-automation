@@ -51,6 +51,13 @@ function SkillFolder($name) {
 }
 function BrowserNeeds {
   Report '확인' '브라우저 제어 확장 연결' '에이전트가 탭 목록 조회로 확인한다(SKILL.md 2단계)'
+  # 개발자 도구를 막는 정책이 걸리면 확장도 탭에 붙지 못한다. 클라우드 관리 정책은 레지스트리에 없어 개발자 도구를 열어 본다
+  $blocked = $false
+  foreach ($k in 'HKLM:\SOFTWARE\Policies\Google\Chrome', 'HKCU:\SOFTWARE\Policies\Google\Chrome') {
+    $p = Get-ItemProperty -LiteralPath $k -ErrorAction SilentlyContinue
+    if ($p -and ("$($p.DeveloperToolsAvailability)" -eq '2' -or "$($p.DeveloperToolsDisabled)" -eq '1')) { $blocked = $true }
+  }
+  if ($blocked) { Report '없음' 'Chrome 개발자 도구' 'PC 관리 정책이 막아 확장이 탭에 붙지 못한다. neis-automation의 references/playwright-폴백.md로 진행' }
   $kcase = Join-Path ${env:ProgramFiles(x86)} 'Ksign\KCase\KCaseAgent.exe'
   if (${env:ProgramFiles(x86)} -and (Test-Path -LiteralPath $kcase)) { Report 'OK' '인증서 로그인 프로그램(KCase Agent)' }
   else { Report '없음' '인증서 로그인 프로그램(KCase Agent)' '업무포털 로그인 페이지 하단 [인증서프로그램다운로드]로 설치(서울 업무포털 기준)' }
