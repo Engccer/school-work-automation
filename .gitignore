@@ -4,3 +4,6 @@ Thumbs.db
 *.local.md
 __pycache__/
 *.local.py
+# 관리자 전용 작업 지침(설치 사용자에게 불필요)
+CLAUDE.md
+AGENTS.md
