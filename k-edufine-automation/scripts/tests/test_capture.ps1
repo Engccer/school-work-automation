@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 <#
   capture.ps1 의 판정 함수 시험. 실제 창은 건드리지 않는다(스크립트를 점-소싱해 함수만 불러온다).
   사용: pwsh -NoProfile -File scripts\tests\test_capture.ps1   (종료 코드 0 = 통과, 2 = 가드 없음으로 중단)

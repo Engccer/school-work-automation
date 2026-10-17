@@ -28,10 +28,10 @@ metadata:
 스킬 루트에서 실행한다. 여러 개는 쉼표로 잇는다.
 
 ```powershell
-pwsh -NoProfile -File scripts/check_requirements.ps1 -Skill neis-automation,alimjang-automation
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check_requirements.ps1 -Skill neis-automation,alimjang-automation
 ```
 
-`pwsh`가 없으면 그것부터 빠진 것이다(`winget install Microsoft.PowerShell`). 줄마다 `[OK]`·`[없음]`·`[확인]` 중 하나다. 종료 코드 0은 빠진 것 없음, 1은 있음, 2는 잘못된 스킬 이름이다.
+줄마다 `[OK]`·`[없음]`·`[확인]` 중 하나다. 종료 코드 0은 빠진 것 없음, 1은 있음, 2는 잘못된 스킬 이름이다.
 
 `[확인]`은 두 가지다. 일부 기능(급여명세서 CSV, 알림장 평일 자동 정리)에만 필요한 항목은 사용자가 그 기능을 쓸 때만 설치를 안내한다. 스크립트가 판정할 수 없는 항목은 아래 절차로 마저 본다.
 

@@ -1,6 +1,6 @@
-<#
+﻿<#
   제목 부분일치로 최상위 창을 찾아 PNG 로 캡처한다.
-  사용: pwsh -NoProfile -File capture.ps1 -TitleLike "수신자지정" [-Out C:\path\shot.png]
+  사용: powershell -NoProfile -ExecutionPolicy Bypass -File capture.ps1 -TitleLike "수신자지정" [-Out C:\path\shot.png]
   -Out 을 생략하면 %TEMP%\kedufine-capture\<시각>.png 에 저장하고 SAVED= 로 경로를 알린다.
   공문 내용이 담긴 캡처이므로 판독 직후 지운다.
 #>
@@ -31,6 +31,7 @@ function Resolve-CaptureOut([string]$Out, [string]$TempRoot = $env:TEMP, [dateti
 }
 
 if ($MyInvocation.InvocationName -eq '.') { return }   # 시험용 점-소싱: 함수만 불러오고 창은 건드리지 않는다
+[Console]::OutputEncoding = [Text.Encoding]::UTF8   # 에이전트가 출력을 받아도 한글이 깨지지 않게
 
 Add-Type -AssemblyName System.Drawing
 

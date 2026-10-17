@@ -1,6 +1,6 @@
-<#
+﻿<#
   대상 창을 앞으로 올린 뒤, 창 기준 상대좌표에 실제 마우스 클릭을 보낸다.
-  사용: pwsh -NoProfile -File click_screen.ps1 -TitleLike "결재경로설정" -X 435 -Y 276
+  사용: powershell -NoProfile -ExecutionPolicy Bypass -File click_screen.ps1 -TitleLike "결재경로설정" -X 435 -Y 276
         (X,Y 는 창 좌상단 기준 픽셀 = 캡처 이미지 좌표와 동일)
 #>
 param(
@@ -10,6 +10,7 @@ param(
   [int]$Index = 0,
   [switch]$DoubleClick
 )
+[Console]::OutputEncoding = [Text.Encoding]::UTF8   # 에이전트가 출력을 받아도 한글이 깨지지 않게
 
 $sig = @"
 using System;

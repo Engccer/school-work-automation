@@ -1,17 +1,18 @@
-<#
+﻿<#
   WXSClient 의 표준 "열기" 파일 대화상자에 경로를 넣고 [열기]를 누른다.
   (브라우저 업로더의 "열기" 창에는 쓰지 않는다. 파일이 렌더러에 전달되지 않는다.)
   - 파일 이름 편집란(class=Edit, id=1148)에 WM_SETTEXT 로 전체 경로를 넣는다.
     WM_SETTEXT 는 시스템이 문자열을 마샬링해 주는 안전한 메시지다.
     (WM_USER 계열에 문자열 포인터를 넘기면 대상 프로세스가 죽는다 — 절대 금지)
   - 그 다음 WM_COMMAND 로 [열기](id=1) 를 누른다.
-  사용: pwsh -NoProfile -File pick_file.ps1 -TitleLike "열기" -Path "C:\...\a.hwpx"
+  사용: powershell -NoProfile -ExecutionPolicy Bypass -File pick_file.ps1 -TitleLike "열기" -Path "C:\...\a.hwpx"
 #>
 param(
   [string]$TitleLike = "열기",
   [string]$Path = "",
   [int]$Index = 0
 )
+[Console]::OutputEncoding = [Text.Encoding]::UTF8   # 에이전트가 출력을 받아도 한글이 깨지지 않게
 
 $sig = @"
 using System;

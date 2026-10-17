@@ -45,7 +45,7 @@ metadata:
 
 ## 읽기 절차
 
-필요한 것: `pip install dbfread openpyxl hwpx-tomd`, `hwpx-automation` 스킬(이 스킬과 같은 스킬 폴더에 두거나 `HWPX_AUTOMATION_DIR`로 지정), JDK 21(HWP 변환), pdftotext. 자동 실행에는 에이전트 CLI(기본 `claude`, 바꾸려면 `ALIM_AGENT_CMD`)와 `pwsh`(PowerShell 7)도 필요하다.
+필요한 것: `pip install dbfread openpyxl hwpx-tomd`, `hwpx-automation` 스킬(이 스킬과 같은 스킬 폴더에 두거나 `HWPX_AUTOMATION_DIR`로 지정), JDK 21(HWP 변환), pdftotext. 자동 실행에는 에이전트 CLI(기본 `claude`, 바꾸려면 `ALIM_AGENT_CMD`)도 필요하다.
 
 ### 1단계: 날짜 결정과 요일 검증
 
@@ -135,13 +135,13 @@ PYTHONIOENCODING=utf-8 python scripts/alim_export.py --date 2026-09-29 --stdout 
 - 등록 명령(스킬 루트 경로를 넣는다. 사용자 계정·로그온 상태 실행이 기본값이다):
 
   ```powershell
-  $a = New-ScheduledTaskAction -Execute 'pwsh.exe' -Argument '-NoProfile -File "<스킬 루트>\scripts\run_daily.ps1"'
+  $a = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -ExecutionPolicy Bypass -File "<스킬 루트>\scripts\run_daily.ps1"'
   $t = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 08:40
   $s = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 30)
   Register-ScheduledTask -TaskName '알림장 일일 정리' -Action $a -Trigger $t -Settings $s
   ```
-- 실행 파일은 `scripts/run_daily.ps1`이고 **`pwsh`(PowerShell 7)로 돌린다.** 스크립트가 BOM 없는 UTF-8이라 Windows PowerShell 5.1로 돌리면 한글 경로가 깨진다.
-- 흐름은 서버 접근 확인 → `alim_export.py --date 오늘` → 첨부가 있고 요약 파일이 없으면 `extract_attachments.py`로 `%LOCALAPPDATA%\알림장-자동화\extract\<날짜>\`에 텍스트 추출(14일 지난 추출본은 자동 삭제) → 에이전트 CLI가 **추출된 .md만 읽어** 요약 작성 순이다. 요약 규칙은 프롬프트에 직접 들어 있다. 기본 에이전트는 Claude Code이고 파일 읽기·쓰기와 `python`·`grep`·`awk` 실행만 허용해 부른다. 다른 에이전트를 쓰려면 환경 변수 `ALIM_AGENT_CMD`에 명령과 옵션을 공백으로 나눠 적는다(공백이 든 경로나 따옴표로 묶은 옵션은 쓸 수 없다). 프롬프트는 마지막 인자로 붙고, 파일 접근 권한은 그 에이전트 설정을 따른다.
+- 실행 파일은 `scripts/run_daily.ps1`이다.
+- 흐름은 서버 접근 확인 → `alim_export.py --date 오늘` → 첨부가 있고 요약 파일이 없으면 `extract_attachments.py`로 `%LOCALAPPDATA%\알림장-자동화\extract\<날짜>\`에 텍스트 추출(14일 지난 추출본은 자동 삭제) → 에이전트 CLI가 **추출된 .md만 읽어** 요약 작성 순이다. 요약 규칙은 프롬프트에 직접 들어 있다. 기본 에이전트는 Claude Code이고 파일 읽기·쓰기와 `python`·`grep`·`awk` 실행만 허용해 부른다. 다른 에이전트를 쓰려면 환경 변수 `ALIM_AGENT_CMD`에 명령과 옵션을 공백으로 나눠 적는다(공백이 든 경로, 따옴표로 묶은 옵션, `.cmd`·`.bat` 래퍼는 쓸 수 없다). 프롬프트는 마지막 인자로 붙고, 파일 접근 권한은 그 에이전트 설정을 따른다.
 - 이미 요약 파일이 있으면 에이전트를 부르지 않는다(재실행해도 무해). 다시 쓰게 하려면 `-Force`를 붙이고, 지난 날짜는 `-Date 2026-09-22`로 돌린다.
 - 로그는 `%LOCALAPPDATA%\알림장-자동화\log\<날짜>.log`에 남는다. 종료 코드는 0 정상, 1 서버 접근 불가, 2 요약 미생성, 3 `alim_export.py` 실패(원인은 로그의 `export:` 줄)다.
 - 점검은 `Get-ScheduledTaskInfo -TaskName '알림장 일일 정리'`(LastTaskResult·NextRunTime)로 하고, 수동 실행은 `Start-ScheduledTask`로 한다. 해제는 `Unregister-ScheduledTask -TaskName '알림장 일일 정리'`이다.

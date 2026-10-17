@@ -1,8 +1,8 @@
-# 받은 메시지에 회신 창을 열고 본문을 채운다. 기본은 '채우기까지'이고,
+﻿# 받은 메시지에 회신 창을 열고 본문을 채운다. 기본은 '채우기까지'이고,
 # -Send 를 줘야 실제로 [보내기]를 누른다.
 #
-#   pwsh -File scripts/cm_reply.ps1 -Sender '홍길동' -BodyFile 'C:\...\body.txt'          # 채우기만
-#   pwsh -File scripts/cm_reply.ps1 -Sender '홍길동' -BodyFile 'C:\...\body.txt' -Send    # 발송까지
+#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cm_reply.ps1 -Sender '홍길동' -BodyFile 'C:\...\body.txt'          # 채우기만
+#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cm_reply.ps1 -Sender '홍길동' -BodyFile 'C:\...\body.txt' -Send    # 발송까지
 #
 # 본문은 CEF(크롬) 에디터라 타이핑 대신 클립보드 붙여넣기를 쓴다.
 # 붙여넣기는 캐럿 위치에 들어가므로 Ctrl+Home으로 맨 앞에 올린 뒤 붙인다.
@@ -15,6 +15,7 @@ param(
     [switch]$Send,
     [string]$ShotPath                           # 확인용 캡처 저장 경로
 )
+[Console]::OutputEncoding = [Text.Encoding]::UTF8   # 에이전트가 출력을 받아도 한글이 깨지지 않게
 
 . "$PSScriptRoot\cm_lib.ps1"
 Add-Type -AssemblyName System.Drawing

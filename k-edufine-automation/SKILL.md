@@ -159,8 +159,8 @@ MSHTML 대화상자)를 `PowerShell` 도구로 실행한다. 반드시 **STA** �
 COM 속성이 조용히 빈 값으로 나온다).
 
 ```powershell
-pwsh -STA -NoProfile -ExecutionPolicy Bypass -File scripts/kyul_dom.ps1 -JsFile <주입할js> [-Var __r] [-WaitMs 1500] [-Index 0]
-pwsh -STA -NoProfile -ExecutionPolicy Bypass -File scripts/mshtml_dom.ps1 -TitleLike "파일저장" -JsFile <주입할js> [-WaitMs 1500]
+powershell -STA -NoProfile -ExecutionPolicy Bypass -File scripts/kyul_dom.ps1 -JsFile <주입할js> [-Var __r] [-WaitMs 1500] [-Index 0]
+powershell -STA -NoProfile -ExecutionPolicy Bypass -File scripts/mshtml_dom.ps1 -TitleLike "파일저장" -JsFile <주입할js> [-WaitMs 1500]
 ```
 
 동작 원리: 창의 자식 중 클래스명 `Internet Explorer_Server` 를 찾아

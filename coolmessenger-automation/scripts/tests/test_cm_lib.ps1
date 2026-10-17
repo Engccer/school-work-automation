@@ -1,4 +1,4 @@
-# cm_lib.ps1·cm_reply.ps1·cm_save_attachments.ps1 시험. 창 찾기 함수를 가짜로 바꿔 실제 쿨메신저 창은 건드리지 않는다.
+﻿# cm_lib.ps1·cm_reply.ps1·cm_save_attachments.ps1 시험. 창 찾기 함수를 가짜로 바꿔 실제 쿨메신저 창은 건드리지 않는다.
 #
 #   pwsh -NoProfile -File scripts/tests/test_cm_lib.ps1      # 실패가 있으면 종료 코드 1
 

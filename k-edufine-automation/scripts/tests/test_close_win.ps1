@@ -1,4 +1,4 @@
-#Requires -Version 7.0
+﻿#Requires -Version 7.0
 <#
   close_win.ps1 의 창 선택 함수 시험. 창 목록은 가짜 배열이고, 실제 창에 WM_CLOSE 를 보내지 않는다.
   사용: pwsh -NoProfile -File scripts\tests\test_close_win.ps1   (종료 코드 0 = 통과, 2 = 가드 없음으로 중단)

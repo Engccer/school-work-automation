@@ -29,9 +29,7 @@ metadata:
 
 ### 실행 전제
 
-`cm_export.py`는 `python`으로, `.ps1` 스크립트는 **`pwsh`(PowerShell 7)**로 실행한다.
-`cm_lib.ps1`은 BOM 없는 UTF-8이라 `powershell.exe`(5.1)로 점 소싱하면 한글 경로·문자열이
-ANSI로 읽혀 구문 오류가 난다. → 사례
+`cm_export.py`는 `python`으로, `.ps1` 스크립트는 `powershell -NoProfile -ExecutionPolicy Bypass -File`로 실행한다.
 
 아래 명령은 모두 스킬 루트에서 실행한다.
 
@@ -85,8 +83,8 @@ python scripts/cm_export.py --sent --since 2026-09-01 --format json
 첨부가 여러 건인 메시지는 아래 「`그룹파일`」 절을 따르고, 관리함 목록 앞쪽 200행보다 오래된 메시지는 내보내기에는 보여도 받아지지 않는다.
 
 ```bash
-pwsh -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest "$env:USERPROFILE\Documents\수합\체크리스트"
-pwsh -File scripts/cm_save_attachments.ps1 -Match '*' -From 홍길동 -Dest "$env:USERPROFILE\Downloads\홍길동"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest "$env:USERPROFILE\Documents\수합\체크리스트"
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.ps1 -Match '*' -From 홍길동 -Dest "$env:USERPROFILE\Downloads\홍길동"
 ```
 
 동작: 메시지 관리함 목록을 읽어 → 첨부파일명이 패턴과 맞는(그리고 `-From`에 맞는) 행을 **실제 마우스로 클릭** →
@@ -244,7 +242,7 @@ UTF-8 파일로 써서 읽는다. CSV는 `utf-8-sig`(BOM)로 저장해야 엑셀
 
 ## 5. 작업 후 반드시 확인할 것
 
-창 조작은 흔적을 남긴다. 끝내기 전에 **남은 창이 없는지 확인**한다(`pwsh`에서).
+창 조작은 흔적을 남긴다. 끝내기 전에 **남은 창이 없는지 확인**한다.
 
 ```powershell
 . .\scripts\cm_lib.ps1

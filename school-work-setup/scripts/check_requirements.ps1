@@ -1,6 +1,6 @@
-<#
+﻿<#
   school-work-automation 번들 요구사항 점검. 읽기만 하고 아무것도 설치·변경하지 않는다.
-  사용: pwsh -NoProfile -File scripts/check_requirements.ps1 [-Skill neis-automation,alimjang-automation]
+  사용: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check_requirements.ps1 [-Skill neis-automation,alimjang-automation]
   출력: 스킬마다 "OK / 없음 / 확인" 줄. 종료 코드 0 = 빠진 것 없음, 1 = 빠진 것 있음, 2 = 잘못된 인자.
   브라우저 제어 확장 연결처럼 스크립트로 볼 수 없는 것은 SKILL.md 절차가 맡는다.
 #>
@@ -68,8 +68,6 @@ function BrowserNeeds {
 
 Write-Host '공통'
 if ($isWin) { Report 'OK' 'Windows' } else { Report '없음' 'Windows' 'K-에듀파인·쿨메신저·알림장 스킬은 Windows 전용' }
-if ($PSVersionTable.PSVersion.Major -ge 7) { Report 'OK' "PowerShell $($PSVersionTable.PSVersion)" }
-else { Report '없음' 'PowerShell 7' 'winget install Microsoft.PowerShell' }
 if (Get-Command npx -ErrorAction SilentlyContinue) { Report 'OK' 'Node.js(npx)' }
 else { Report '없음' 'Node.js(npx)' '스킬 설치·갱신에 필요. https://nodejs.org' }
 $web = 'neis-automation', 'k-edufine-automation', 'kyodetong-submit'

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   범용 MSHTML 브리지 — 최상위 창을 "제목 부분일치"로 찾아 임베디드 IE DOM 을 제어한다.
 
@@ -10,7 +10,7 @@
   EnumWindows 로 모든 최상위 창을 훑어 제목 부분일치로 고르므로 그 대화상자들까지 닿는다.
 
   반드시 STA 로 실행할 것 (COM 요구사항):
-    pwsh -STA -NoProfile -ExecutionPolicy Bypass -File mshtml_dom.ps1 `
+    powershell -STA -NoProfile -ExecutionPolicy Bypass -File mshtml_dom.ps1 `
          -TitleLike "파일저장" -JsFile <js> [-Var __r] [-WaitMs 1500] [-Index 0]
 
 .PARAMETER TitleLike
@@ -44,6 +44,7 @@ param(
   [int]$Index = 0,
   [switch]$ListOnly
 )
+[Console]::OutputEncoding = [Text.Encoding]::UTF8   # 에이전트가 출력을 받아도 한글이 깨지지 않게
 
 $sig = @"
 using System;

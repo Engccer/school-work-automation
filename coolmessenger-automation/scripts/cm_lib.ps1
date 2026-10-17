@@ -1,4 +1,4 @@
-# 쿨메신저(CoolMessenger Gentoo) UI 자동화 공용 라이브러리
+﻿# 쿨메신저(CoolMessenger Gentoo) UI 자동화 공용 라이브러리
 #
 #   . "$PSScriptRoot\cm_lib.ps1"
 #

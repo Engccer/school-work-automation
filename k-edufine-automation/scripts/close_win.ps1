@@ -1,6 +1,6 @@
-<#
+﻿<#
   제목으로 찾은 최상위 창에 WM_CLOSE 를 보낸다. 기본은 부분일치, -Exact 면 제목 완전일치.
-  사용: pwsh -NoProfile -File close_win.ps1 -TitleLike "-- 웹 페이지 대화 상자" -Exact
+  사용: powershell -NoProfile -ExecutionPolicy Bypass -File close_win.ps1 -TitleLike "-- 웹 페이지 대화 상자" -Exact
   주의: 제목이 비슷한 창을 잘못 닫지 않도록 -List 로 먼저 확인하고 -Index 로 고를 것.
         -Index 는 그때의 -TitleLike·-Exact 로 거른 목록 안 순번이고 부를 때마다 다시 센다.
         -List 는 닫을 때와 같은 -TitleLike·-Exact 로 돌리고, 하나 닫을 때마다 다시 -List 한다.
@@ -21,6 +21,7 @@ function Select-WindowIndex([string[]]$Titles, [string]$TitleLike, [switch]$Exac
 }
 
 if ($MyInvocation.InvocationName -eq '.') { return }   # 시험용 점-소싱: 함수만 불러오고 창은 건드리지 않는다
+[Console]::OutputEncoding = [Text.Encoding]::UTF8   # 에이전트가 출력을 받아도 한글이 깨지지 않게
 
 $sig = @"
 using System;

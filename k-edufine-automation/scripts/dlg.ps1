@@ -1,15 +1,16 @@
-<#
+﻿<#
   Win32 메시지 창(#32770)의 자식 컨트롤을 덤프하거나 버튼을 누른다.
   사용:
-    pwsh -NoProfile -File dlg.ps1 -TitleLike "웹 페이지 메시지"                # 전부 덤프
-    pwsh -NoProfile -File dlg.ps1 -TitleLike "웹 페이지 메시지" -Click 1        # 컨트롤ID 1 클릭
-    pwsh -NoProfile -File dlg.ps1 -TitleLike "웹 페이지 메시지" -Index 1 -Click 2
+    powershell -NoProfile -ExecutionPolicy Bypass -File dlg.ps1 -TitleLike "웹 페이지 메시지"                # 전부 덤프
+    powershell -NoProfile -ExecutionPolicy Bypass -File dlg.ps1 -TitleLike "웹 페이지 메시지" -Click 1        # 컨트롤ID 1 클릭
+    powershell -NoProfile -ExecutionPolicy Bypass -File dlg.ps1 -TitleLike "웹 페이지 메시지" -Index 1 -Click 2
 #>
 param(
   [string]$TitleLike = "",
   [int]$Index = 0,
   [int]$Click = -1
 )
+[Console]::OutputEncoding = [Text.Encoding]::UTF8   # 에이전트가 출력을 받아도 한글이 깨지지 않게
 
 $sig = @"
 using System;

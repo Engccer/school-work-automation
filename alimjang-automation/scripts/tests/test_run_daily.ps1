@@ -1,4 +1,4 @@
-<#
+﻿<#
   run_daily.ps1 밀폐 시험. 서버·작업 스케줄러·에이전트를 부르지 않는다.
   실행(스킬 루트에서): pwsh -NoProfile -File scripts/tests/test_run_daily.ps1
   - 시험용 프로젝트 트리를 임시 폴더에 만들고 run_daily.ps1 사본을 그 안에서 돌린다.

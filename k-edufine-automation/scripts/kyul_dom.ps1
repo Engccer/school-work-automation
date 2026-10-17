@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   K-에듀파인 결재 클라이언트 앱(WXSClient.exe / 창 제목 "HCLTAPP_KYUL_") 내부 DOM 제어 브리지.
 
@@ -9,7 +9,7 @@
   일반 웹페이지처럼 DOM 을 읽고 조작할 수 있다.
 
   반드시 STA 모드로 실행할 것 (COM 요구사항):
-    pwsh -STA -NoProfile -File kyul_dom.ps1 -JsFile <js파일> [-Var __r] [-WaitMs 1500]
+    powershell -STA -NoProfile -ExecutionPolicy Bypass -File kyul_dom.ps1 -JsFile <js파일> [-Var __r] [-WaitMs 1500]
 
 .PARAMETER JsFile
   주입할 JavaScript 파일 경로(UTF-8). 결과를 window.<Var> 에 문자열로 담을 것.
@@ -38,6 +38,7 @@ param(
   [string]$WindowName = "HCLTAPP_KYUL_",
   [int]$Index = 0
 )
+[Console]::OutputEncoding = [Text.Encoding]::UTF8   # 에이전트가 출력을 받아도 한글이 깨지지 않게
 
 $sig = @"
 using System;

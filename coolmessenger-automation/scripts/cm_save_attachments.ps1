@@ -1,8 +1,8 @@
-# 쿨메신저 받은메시지의 첨부파일을 골라서 일괄로 내려받아 지정 폴더에 모은다.
+﻿# 쿨메신저 받은메시지의 첨부파일을 골라서 일괄로 내려받아 지정 폴더에 모은다.
 #
-#   pwsh -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest "$env:USERPROFILE\Documents\수합\체크리스트"
-#   pwsh -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest '...' -WhatIf   # 대상만 확인
-#   pwsh -File scripts/cm_save_attachments.ps1 -Match '*' -From '홍길동' -Dest '...'       # 그 사람이 보낸 첨부만
+#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest "$env:USERPROFILE\Documents\수합\체크리스트"
+#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest '...' -WhatIf   # 대상만 확인
+#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.ps1 -Match '*' -From '홍길동' -Dest '...'       # 그 사람이 보낸 첨부만
 #
 # 저장 위치는 레지스트리 DownPath로 정해져 있고 선택할 수 없다.
 # 그래서 저장된 파일을 파일명으로 찾아 -Dest로 옮기는 방식으로 동작한다.
@@ -15,6 +15,7 @@ param(
     [string[]]$WatchDirs,                      # 저장 위치 후보(생략 시 기본값)
     [int]$DownloadTimeoutSec = 25
 )
+[Console]::OutputEncoding = [Text.Encoding]::UTF8   # 에이전트가 출력을 받아도 한글이 깨지지 않게
 
 # 상대 경로 -Dest는 Split-Path -Qualifier가 실패해 드라이브 루트 탐색이 깨지므로 먼저 절대 경로로 바꾼다
 $Dest = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Dest)

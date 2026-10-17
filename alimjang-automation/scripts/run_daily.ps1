@@ -1,4 +1,4 @@
-<#
+﻿<#
   알림장 일일 자동 정리(작업 스케줄러용).
   1) alim_export.py 로 전달사항 텍스트 저장 + 첨부 복사
   2) 첨부가 있고 요약 파일이 아직 없으면 extract_attachments.py 로 첨부를 텍스트로 추출
@@ -7,7 +7,7 @@
   로그: %LOCALAPPDATA%\알림장-자동화\log\<날짜>.log
 
   ALIM_AGENT_CMD: 공백으로 나눈 명령과 옵션. 프롬프트는 마지막 인자로 붙는다.
-  사용(스킬 루트에서): pwsh -NoProfile -File scripts/run_daily.ps1 [-Date 2026-09-22] [-Force]
+  사용(스킬 루트에서): powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_daily.ps1 [-Date 2026-09-22] [-Force]
 #>
 param(
   [string]$Date = (Get-Date -Format 'yyyy-MM-dd'),
@@ -25,6 +25,36 @@ $logDir = Join-Path $env:LOCALAPPDATA '알림장-자동화\log'
 New-Item -ItemType Directory -Force $logDir | Out-Null
 $log = Join-Path $logDir "$Date.log"
 function Write-Log($m) { "[$(Get-Date -Format 'HH:mm:ss')] $m" | Out-File -Append -Encoding utf8 $log }
+
+# 외부 프로그램 호출. Windows PowerShell 5.1은 인자 안의 큰따옴표를 이스케이프하지 않아
+# 프롬프트가 여러 인자로 쪼개지므로, 5.1에서는 명령줄을 직접 조립해 실행한다.
+function Invoke-Native([string]$Exe, [string[]]$ArgList) {
+  $app = Get-Command $Exe -ErrorAction Stop | Select-Object -First 1
+  if ($app.CommandType -eq 'Application' -and $app.Source -match '\.(cmd|bat)$') {
+    # cmd.exe가 명령줄을 다시 읽어 여러 줄 프롬프트가 첫 줄에서 잘린다
+    Write-Log "실행 불가: .cmd·.bat 래퍼는 프롬프트가 잘린다. 실행 파일을 직접 지정할 것 ($($app.Source))"
+    $global:LASTEXITCODE = 1; return
+  }
+  if ($PSVersionTable.PSVersion.Major -ge 7) { return & $Exe @ArgList 2>&1 }
+  $line = ($ArgList | ForEach-Object {
+    if ($_ -ne '' -and $_ -notmatch '[\s"]') { $_ }
+    else { '"' + (($_ -replace '(\\*)"', '$1$1\"') -replace '(\\+)$', '$1$1') + '"' }
+  }) -join ' '
+  $psi = New-Object System.Diagnostics.ProcessStartInfo
+  $psi.FileName = $app.Source
+  $psi.Arguments = $line
+  $psi.UseShellExecute = $false
+  $psi.RedirectStandardOutput = $true
+  $psi.RedirectStandardError = $true
+  $psi.StandardOutputEncoding = [Text.Encoding]::UTF8
+  $psi.StandardErrorEncoding = [Text.Encoding]::UTF8
+  $p = [System.Diagnostics.Process]::Start($psi)
+  $err = $p.StandardError.ReadToEndAsync()
+  $out = $p.StandardOutput.ReadToEnd()
+  $p.WaitForExit()
+  $global:LASTEXITCODE = $p.ExitCode
+  @($out -split "`r?`n") + @($err.Result -split "`r?`n") | Where-Object { $_ -ne '' }
+}
 
 Write-Log "시작 date=$Date"
 if (-not (Test-Path '\\관리자\$ALIM$\ALIM.DBF')) { Write-Log '서버(\\관리자\$ALIM$) 접근 불가 — 종료'; exit 1 }
@@ -76,10 +106,10 @@ try {
     # 프롬프트를 마지막 인자로 붙인다. 파일 접근 권한은 그 에이전트 설정(명령에 넣은 옵션)을 따른다.
     $exe = $agentCmd[0]
     $rest = @($agentCmd | Select-Object -Skip 1)
-    $res = & $exe @rest $prompt 2>&1
+    $res = Invoke-Native $exe (@($rest) + $prompt)
   } else {
     $allowed = 'Read', 'Write', 'Edit', 'Bash(python:*)', 'Bash(grep:*)', 'Bash(awk:*)'
-    $res = & claude -p $prompt --add-dir $folder $work --allowedTools @allowed 2>&1  # sanitize: allow 기본 에이전트(검증 환경)
+    $res = Invoke-Native claude (@('-p', $prompt, '--add-dir', $folder, $work, '--allowedTools') + $allowed)  # sanitize: allow 기본 에이전트(검증 환경)
   }
   $res | ForEach-Object { Write-Log "agent: $_" }
 } finally { Pop-Location }
