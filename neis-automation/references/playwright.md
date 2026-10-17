@@ -1,13 +1,19 @@
-# Playwright 폴백 — 크롬 확장이 붙지 않을 때
+# Playwright — 업무포털 웹 업무의 기본 브라우저
 
 업무포털을 거치는 웹 업무(나이스·K-에듀파인·교데통) 공통. 세 스킬이 이 파일 하나를 참조한다.
 
-## 언제 쓰나
+## 경로 고르기
 
-브라우저 제어 확장에서 주소 이동·탭 목록은 되는데 **클릭·스크린샷·페이지 JS 실행이 모든 탭에서
-`Cannot attach to this target`**이면 대개 크롬 관리 정책이 개발자 도구를 막아 확장이 붙지 못하는 것이다.
-크롬 메뉴 ⋮ → 도구 더보기 → 개발자 도구를 열어 "조직에서 이 페이지의 DevTools 사용을 차단했습니다"가
-뜨면 확정이다. 원인과 무관하게 탭·크롬 재시작으로는 풀리지 않으니 바로 넘어온다. 다른 크롬 프로필로 바꿔도 PC 단위 정책이면 그대로 막힌다. → 사례
+**Playwright MCP 서버**(`@playwright/mcp`)가 띄우는 크롬은 인증서 창이 정상으로
+뜨고 SSO도 이어진다. 확장 연결이 필요 없고 크롬 프로필의 계정 관리 정책도 받지 않으므로 이것이 기본이다.
+별도 크롬 인스턴스라 업무포털 로그인은 그 창에서 새로 한다. 도구가 없으면 사용자에게 에이전트 설정에
+Playwright MCP 서버(`npx @playwright/mcp@latest`) 등록을 요청한다.
+
+브라우저 제어 확장(Claude in Chrome에서 검증)은 사용자가 원할 때만 쓴다. 확장에서 주소 이동·탭 목록은 되는데 **클릭·스크린샷·
+페이지 JS 실행이 모든 탭에서 `Cannot attach to this target`**이면 대개 크롬 관리 정책이 개발자 도구를
+막아 확장이 붙지 못하는 것이다. 크롬 메뉴 ⋮ → 도구 더보기 → 개발자 도구를 열어 "조직에서 이 페이지의
+DevTools 사용을 차단했습니다"가 뜨면 확정이다. 탭·크롬 재시작으로는 풀리지 않으니 바로 Playwright로
+돌아온다. 다른 크롬 프로필로 바꿔도 PC 단위 정책이면 그대로 막힌다. → 사례
 
 다른 길이 막히는 이유:
 
@@ -15,13 +21,10 @@
   ("인증서 로그인용 프로그램 설치가 필요합니다" 알림).
 - **데스크톱 제어**(computer use): 브라우저는 읽기 전용 등급이라 클릭·타이핑이 막힌다.
 
-**Playwright MCP 서버**(`@playwright/mcp`)가 띄우는 크롬은 인증서 창이 정상으로
-뜨고 SSO도 이어진다. 확장과 무관한 별도 크롬 인스턴스라 업무포털 로그인은 그 창에서 새로 한다.
-
 ## 공통 절차
 
 쓰는 도구: `browser_navigate`·`browser_run_code_unsafe`·`browser_evaluate`·`browser_take_screenshot`·
-`browser_tabs`·`browser_click`·`browser_handle_dialog`·`browser_file_upload`.
+`browser_tabs`·`browser_click`·`browser_handle_dialog`·`browser_file_upload`·`browser_snapshot`·`browser_find`.
 
 1. **로그인**: `browser_navigate` → `https://sen.eduptl.kr/bpm_lgn_lg00_001.do`. 공지 팝업은 그대로 두고
    `browser_click`(target `button:has-text("교육행정 전자서명 인증서 로그인")`)으로 인증서 창을 띄운 뒤,
@@ -66,8 +69,34 @@
    **작업이 끝나면 폴더째 지운다.** Playwright 크롬 창은 업무포털 세션이 살아 있으니 사용자에게
    닫아도 된다고 알린다.
 
+## 업무 파일의 도구 이름 바꿔 읽기
+
+스킬 본문과 업무 파일의 도구 이름은 확장 기준이다. Playwright 경로에서는 아래처럼 바꿔 읽는다.
+Playwright로 끝까지 검증한 업무는 교과 세특·과목별독서활동이고, 나머지는 처음 쓸 때 화면으로 확인한다.
+
+| 업무 파일의 표현 | Playwright |
+|---|---|
+| 주소 이동 | `browser_navigate` |
+| 스크린샷, 확대 캡처 | `browser_take_screenshot`(`scale: "css"`), 확대는 같은 도구에 `target`(요소 ref·선택자)을 준다 |
+| 좌표 클릭·더블클릭·드래그, 키 입력, `type` | `run_code`의 `page.mouse.*`·`page.keyboard.press`·`page.keyboard.insertText` |
+| 페이지 JS 실행 | `browser_evaluate` 또는 `run_code`의 `page.evaluate` |
+| 요소 찾기 | `browser_find`(문구로 ref를 찾는다) |
+| 접근성 트리 읽기의 ref | `browser_snapshot`의 ref 또는 `page.locator(...)`(iframe 안은 `frameLocator`로 닿는다) |
+| 폼 값 설정 | `browser_fill_form`·`browser_select_option`(DIV 드롭다운에는 둘 다 안 통한다) |
+| 탭 목록 조회, 새 탭 ID | `browser_tabs` |
+| 일괄 실행 | `run_code` 하나에 묶는다 |
+| 파일 업로드, 임시 input 다리 | `setInputFiles`(공통 절차 7) |
+| 창 크기 조정 | `page.setViewportSize` |
+| 페이지 텍스트 추출 | `page.evaluate(() => document.body.innerText)` |
+
+스크린샷이 css 픽셀이라 「좌표 환산」의 비율은 1이다. 키 이름은 Playwright 표기로 바꾼다(`ctrl+a` →
+`Control+A`, `Return` → `Enter`). 업무 파일의 JS 조각은 문장 그대로라 `browser_evaluate`에는
+`() => { ... }`로 감싸 넘기고, Promise를 기다려 주므로 결과를 `window` 변수에 담아 두는 우회는 필요 없다.
+
 ## 미확인 영역
 
 - **K-에듀파인 결재·기안 문서 창**(`WXSClient.exe`)은 브라우저가 `doCallClientApp`으로 띄우는 네이티브
   앱이다. Playwright 크롬에서 눌렀을 때 외부 프로그램 실행 확인 창이 뜨는지, 창이 정상으로 뜨는지는
   아직 모른다. 창이 뜬 뒤의 MSHTML 브리지·실제 마우스 클릭 절차는 브라우저와 무관하게 같다.
+- **PC 단위 관리 정책**: 컴퓨터에 걸린 크롬 정책이 Playwright 크롬의 조작까지 막는지는 모른다.
+  Playwright 크롬이 뜨지 않거나 조작이 거부되면 사용자에게 알린다(같은 정책이면 확장도 막힌다).

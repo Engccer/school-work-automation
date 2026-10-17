@@ -2,7 +2,7 @@
   school-work-automation 번들 요구사항 점검. 읽기만 하고 아무것도 설치·변경하지 않는다.
   사용: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check_requirements.ps1 [-Skill neis-automation,alimjang-automation]
   출력: 스킬마다 "OK / 없음 / 확인" 줄. 종료 코드 0 = 빠진 것 없음, 1 = 빠진 것 있음, 2 = 잘못된 인자.
-  브라우저 제어 확장 연결처럼 스크립트로 볼 수 없는 것은 SKILL.md 절차가 맡는다.
+  Playwright 브라우저 도구처럼 스크립트로 볼 수 없는 것은 SKILL.md 절차가 맡는다.
 #>
 param([string[]]$Skill)
 [Console]::OutputEncoding = [Text.Encoding]::UTF8   # bash 등 다른 셸이 출력을 받아도 한글이 깨지지 않게
@@ -50,14 +50,14 @@ function SkillFolder($name) {
   else { Report '없음' "스킬 폴더 $name" 'npx skills add Engccer/school-work-automation -g' }
 }
 function BrowserNeeds {
-  Report '확인' '브라우저 제어 확장 연결' '에이전트가 탭 목록 조회로 확인한다(SKILL.md 2단계)'
+  Report '확인' 'Playwright 브라우저 도구' '에이전트가 자기 도구 목록으로 확인한다(SKILL.md 2단계)'
   # 개발자 도구를 막는 정책이 걸리면 확장도 탭에 붙지 못한다. 클라우드 관리 정책은 레지스트리에 없어 개발자 도구를 열어 본다
   $blocked = $false
   foreach ($k in 'HKLM:\SOFTWARE\Policies\Google\Chrome', 'HKCU:\SOFTWARE\Policies\Google\Chrome') {
     $p = Get-ItemProperty -LiteralPath $k -ErrorAction SilentlyContinue
     if ($p -and ("$($p.DeveloperToolsAvailability)" -eq '2' -or "$($p.DeveloperToolsDisabled)" -eq '1')) { $blocked = $true }
   }
-  if ($blocked) { Report '없음' 'Chrome 개발자 도구' 'PC 관리 정책이 막아 확장이 탭에 붙지 못한다. neis-automation의 references/playwright-폴백.md로 진행' }
+  if ($blocked) { Report '확인' 'Chrome 개발자 도구' 'PC 관리 정책이 막고 있다. 브라우저 제어 확장은 붙지 못하고, Playwright 크롬도 막히는지는 처음 쓸 때 본다' }
   $kcase = Join-Path ${env:ProgramFiles(x86)} 'Ksign\KCase\KCaseAgent.exe'
   if (${env:ProgramFiles(x86)} -and (Test-Path -LiteralPath $kcase)) { Report 'OK' '인증서 로그인 프로그램(KCase Agent)' }
   else { Report '없음' '인증서 로그인 프로그램(KCase Agent)' '업무포털 로그인 페이지 하단 [인증서프로그램다운로드]로 설치(서울 업무포털 기준)' }

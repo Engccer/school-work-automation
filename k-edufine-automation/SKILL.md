@@ -2,7 +2,7 @@
 name: k-edufine-automation
 license: MIT
 description: >-
-  서울 업무포털을 거쳐 K-에듀파인(klef.sen.go.kr)의 공문 업무를 자동화한다. 목록은 브라우저 제어 확장으로, 결재·기안 문서 창(WXSClient)은 PowerShell MSHTML 브리지와 실제 마우스 클릭으로 다룬다. 다음 요청에 사용한다. (1) 결재대기 공문 확인·판독, 접수 공문 본문·첨부 PC저장, 과제카드 지정·문서처리(접수) (2) 새 공문 기안·결재올림(상신): 내부결재, 대외시행 자동발송, 겸직허가 신청 등. "공문 올려 줘", "기안해 줘", "결재 올려 줘" (3) 문서등록대장에서 선례·발송 정보 찾기 (4) 기록물관리 점검 등에 따른 완료 문서 대국민공개여부(공개구분) 수정 (5) HwpODTpatch 보안 프로그램 설치 alert 반복, K-에듀파인 사용자지원서비스 질의. 교데통 자료 제출(전자결재 연계기안 포함)은 kyodetong-submit, 나이스 복무·출장 상신은 neis-automation이 맡는다. K-Edufine, official document, e-approval, drafting, document registry, WXSClient, MSHTML.
+  서울 업무포털을 거쳐 K-에듀파인(klef.sen.go.kr)의 공문 업무를 자동화한다. 목록은 브라우저 자동화(기본 Playwright)로, 결재·기안 문서 창(WXSClient)은 PowerShell MSHTML 브리지와 실제 마우스 클릭으로 다룬다. 다음 요청에 사용한다. (1) 결재대기 공문 확인·판독, 접수 공문 본문·첨부 PC저장, 과제카드 지정·문서처리(접수) (2) 새 공문 기안·결재올림(상신): 내부결재, 대외시행 자동발송, 겸직허가 신청 등. "공문 올려 줘", "기안해 줘", "결재 올려 줘" (3) 문서등록대장에서 선례·발송 정보 찾기 (4) 기록물관리 점검 등에 따른 완료 문서 대국민공개여부(공개구분) 수정 (5) HwpODTpatch 보안 프로그램 설치 alert 반복, K-에듀파인 사용자지원서비스 질의. 교데통 자료 제출(전자결재 연계기안 포함)은 kyodetong-submit, 나이스 복무·출장 상신은 neis-automation이 맡는다. K-Edufine, official document, e-approval, drafting, document registry, WXSClient, MSHTML.
 metadata:
   version: "5.3.1"
 ---
@@ -14,10 +14,10 @@ metadata:
 서울특별시교육청 업무포털을 거쳐 K-에듀파인에 진입해, 들어온 공문을 처리하고(결재대기)
 새 공문을 만들어 올리는(기안) 자동화 워크플로우. **도구가 세 갈래**다.
 
-- **목록·진입**: 브라우저 제어 확장(Claude in Chrome에서 검증). 확장이 모든 탭에서 `Cannot attach to this target`으로
-  붙지 않으면 Playwright 크롬으로 바꾼다 → 스킬 `neis-automation`의
-  [references/playwright-폴백.md](../neis-automation/references/playwright-폴백.md)
-  (2단계의 [K-에듀파인] 새 탭 진입도 그 파일의 절차 2. 5단계 문서 열기로 WXSClient가 뜨는지는 미확인)
+- **목록·진입**: 브라우저(기본 Playwright 크롬) → 스킬 `neis-automation`의
+  [references/playwright.md](../neis-automation/references/playwright.md)
+  (2단계의 [K-에듀파인] 새 탭 진입은 그 파일의 절차 2). 5단계 문서 열기로 WXSClient가 뜨는지는
+  Playwright에서 미확인이라, 문서 창이 뜨지 않으면 사용자에게 알리고 확장 경로로 바꾼다.
 - **문서 창 내부 판독·필드 입력**: PowerShell MSHTML 브리지(6단계)
   - `scripts/kyul_dom.ps1` — 결재 문서 창 전용(`Get-Process WXSClient` + 제목 완전일치)
   - `scripts/mshtml_dom.ps1` — **제목 부분일치 범용판.** 기안 창과 모든 MSHTML 대화상자는
@@ -205,12 +205,12 @@ powershell -STA -NoProfile -ExecutionPolicy Bypass -File scripts/mshtml_dom.ps1 
 
 - **화면 구조**: Nexacro 셸 + iframe 다층 구조(websocket 브리지, 업무화면 iframe,
   OZ 뷰어 iframe). DOM 조회 시 iframe을 재귀 탐색해야 한다.
-- **페이지 JS 실행 비동기 결과**: async IIFE/Promise 반환값은 `{}`로 직렬화된다.
+- **(확장) 페이지 JS 실행 비동기 결과**: async IIFE/Promise 반환값은 `{}`로 직렬화된다.
   결과를 `window` 변수에 저장해 두고, 별도 호출에서 `JSON.stringify`로 동기 조회할 것.
-- **출력 차단**: 함수 소스나 URL 전체를 반환하면 세션 토큰 감지로 출력이
+- **(확장) 출력 차단**: 함수 소스나 URL 전체를 반환하면 세션 토큰 감지로 출력이
   "[BLOCKED: Cookie/query string data]"로 대체된다. 경로·불리언·식별자만 정규식으로
   추출해 반환하면 통과한다.
-- **사용자가 브라우저를 껐다 켜면 확장이 새 연결로 잡힌다.** 이전 연결은 목록에
+- **(확장) 사용자가 브라우저를 껐다 켜면 새 연결로 잡힌다.** 이전 연결은 목록에
   그대로 남아 있고 브라우저 선택도 성공하므로, 모르고 계속 쓰면 **탭이 만들어지고
   스크린샷도 찍히는데 사용자 화면에는 아무것도 안 보인다**("이 컴퓨터 브라우저에 안
   열렸어"). 연결된 브라우저 목록 조회의 `name` 은 **목록 순서 라벨이라 고정 식별자가

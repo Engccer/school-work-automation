@@ -2,7 +2,7 @@
 name: neis-automation
 license: MIT
 description: >-
-  서울 업무포털(sen.eduptl.kr) 인증서 로그인 뒤 4세대 나이스(sen.neis.go.kr) 화면 업무를 브라우저 제어 확장으로 처리하고, 나이스 대국민서비스를 거친 정부24 교육제증명 발급도 맡는다. 다음 요청에 사용한다. (1) 나이스 접속·업무포털 진입, 학교 밖 EVPN 원격 접속 (2) 복무·결재: 근무상황(육아시간·근무시간면제·연가·조퇴) 신청, 출장 신청, 외부강의 신고 등록·현황 조회, 상신함 결재 내역 추출, "지난번과 같은 조건으로 올려 줘" (3) 성적: 정기고사 OMR 일괄채점, 문항별 정답률·학년 통계 조회, 학기 시작 선행작업(성취기준·수행평가 영역·반영비율 등록) (4) 학생부 화면 입력: 교과 세특을 한두 명 화면에서 직접 입력(전출생 등), 과목별 독서활동, 동아리 이수시간 확인·특기사항 입력 (5) 월 급여명세서(나의지급명세서) 내려받기 (6) 재직증명서 등 교육제증명 발급 (7) 나이스광장 질의등록. 세특 문안 작성과 반 전체 세특양식 CSV 기입은 이 스킬의 범위 밖이고, K-에듀파인 공문은 k-edufine-automation, 교데통 제출은 kyodetong-submit이 맡는다. NEIS, Seoul education portal, leave request, business trip, outside lecture report, payslip, certificate of employment, OMR grading, item analysis.
+  서울 업무포털(sen.eduptl.kr) 인증서 로그인 뒤 4세대 나이스(sen.neis.go.kr) 화면 업무를 브라우저 자동화(기본 Playwright)로 처리하고, 나이스 대국민서비스를 거친 정부24 교육제증명 발급도 맡는다. 다음 요청에 사용한다. (1) 나이스 접속·업무포털 진입, 학교 밖 EVPN 원격 접속 (2) 복무·결재: 근무상황(육아시간·근무시간면제·연가·조퇴) 신청, 출장 신청, 외부강의 신고 등록·현황 조회, 상신함 결재 내역 추출, "지난번과 같은 조건으로 올려 줘" (3) 성적: 정기고사 OMR 일괄채점, 문항별 정답률·학년 통계 조회, 학기 시작 선행작업(성취기준·수행평가 영역·반영비율 등록) (4) 학생부 화면 입력: 교과 세특을 한두 명 화면에서 직접 입력(전출생 등), 과목별 독서활동, 동아리 이수시간 확인·특기사항 입력 (5) 월 급여명세서(나의지급명세서) 내려받기 (6) 재직증명서 등 교육제증명 발급 (7) 나이스광장 질의등록. 세특 문안 작성과 반 전체 세특양식 CSV 기입은 이 스킬의 범위 밖이고, K-에듀파인 공문은 k-edufine-automation, 교데통 제출은 kyodetong-submit이 맡는다. NEIS, Seoul education portal, leave request, business trip, outside lecture report, payslip, certificate of employment, OMR grading, item analysis.
 metadata:
   version: "2.10.1"
 ---
@@ -12,7 +12,7 @@ metadata:
 ## 개요
 
 서울특별시교육청 업무포털을 거쳐 4세대 나이스에 진입하는 브라우저 자동화 워크플로우.
-브라우저 제어 확장(Claude in Chrome에서 검증)을 사용한다. **인증서 로그인은 반드시 사용자(교사 본인)가 직접 수행**한다
+기본 브라우저는 Playwright가 띄우는 크롬이다(→ 「브라우저 준비」). **인증서 로그인은 반드시 사용자(교사 본인)가 직접 수행**한다
 (인증서 비밀번호 입력은 자동화 금지 영역).
 
 - 업무포털: `https://sen.eduptl.kr/bpm_man_mn00_001.do` (메인) / `bpm_lgn_lg00_001.do` (로그인)
@@ -30,7 +30,13 @@ metadata:
 
 학교 밖(자택 등)에서 작업하거나 업무포털 주소 이동이 무응답이면 착수 전에 [references/EVPN.md](references/EVPN.md)를 읽는다.
 
-## 사전 점검 (브라우저 연결)
+## 브라우저 준비
+
+**기본은 Playwright다.** 도구 로드·로그인·업무 시스템 진입은 [references/playwright.md](references/playwright.md)를
+따른다. 아래 워크플로우의 사실(세션·팝업·화면 구조)은 두 경로에 공통이고, 이 문서와 업무 파일의
+도구 이름은 확장 기준이라 Playwright 경로에서는 그 파일의 대응표로 바꿔 읽는다.
+
+### 확장을 쓸 때(사용자가 원할 때)
 
 1. 브라우저 제어 확장이 다음 기능을 제공하는지 확인한다: 탭 목록 조회, 주소 이동, 좌표 클릭과 화면 캡처,
    접근성 트리 읽기, 요소 찾기, 일괄 실행, 연결된 브라우저 목록 조회, 창 크기 조정, 페이지 JS 실행, 폼 값 설정.
@@ -123,7 +129,7 @@ metadata:
 | 재직증명서 등 교육제증명 발급(정부24, 업무포털 불필요) | [references/교육제증명-정부24.md](references/교육제증명-정부24.md) |
 | 교과 세특 입력(과목별세부능력및특기사항) | [references/교과-세특.md](references/교과-세특.md) |
 | 나이스광장 질의등록·나이스 업무 FAQ | [references/나이스광장-지원.md](references/나이스광장-지원.md) |
-| 크롬 확장이 `Cannot attach to this target`으로 붙지 않을 때(K-에듀파인·교데통 공통) | [references/playwright-폴백.md](references/playwright-폴백.md) |
+| Playwright 로그인·진입·조작, 도구 이름 대응표, 확장을 쓸지 판단(K-에듀파인·교데통 공통) | [references/playwright.md](references/playwright.md) |
 
 경위·날짜·실측 수치와 변경 이력은 [references/cases.md](references/cases.md)에 있다. 규칙 끝의 `→ 사례`가 그 자리를 가리킨다.
 
@@ -256,13 +262,13 @@ metadata:
   - **Chrome 팝업 창이 떴는지 `Get-Process chrome | MainWindowTitle`로 확인하면 안 된다** —
     MainWindowTitle은 프로세스당 하나만 돌려주므로 같은 프로세스의 새 창이 보이지 않는다.
     `EnumWindows`로 `Chrome_WidgetWin_1` 클래스 창 제목을 열거해야 한다. → 사례
-  - **모든 탭에서 `Cannot attach to this target`이면 크롬 확장 경로를 버리고 Playwright로 간다**
-    → [references/playwright-폴백.md](references/playwright-폴백.md). 앱 내장 브라우저는 인증서
-    프로그램을 인식하지 못하고, 데스크톱 제어는 브라우저를 읽기 전용으로만 다뤄 대안이 되지 않는다.
+  - **모든 탭에서 `Cannot attach to this target`이면 확장을 버리고 Playwright로 돌아간다**
+    → [references/playwright.md](references/playwright.md).
 
 ## 일반 원칙
 
-- 조회·판독 조작은 한 번에 묶어 실행한다(이동 → 대기 → 캡처 패턴).
+- 조회·판독 조작은 한 번에 묶어 실행한다(이동 → 대기 → 캡처 패턴. Playwright는 `run_code` 하나,
+  확장은 일괄 실행).
   단 다음은 **단독 호출**로 한다: 그리드·폼을 다시 그리는 조작(행추가·드롭다운 선택·더블클릭·
   달력 날짜 선택) 뒤의 입력, 같은 배치에서 이어지는 두 번째 달력 조작, 주소 이동 재시도.
 - 클릭 전 반드시 최신 스크린샷으로 좌표를 확인. 팝업이 화면을 덮고 있으면 먼저 닫는다.
