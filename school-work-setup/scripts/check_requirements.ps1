@@ -57,7 +57,7 @@ function BrowserNeeds {
     $p = Get-ItemProperty -LiteralPath $k -ErrorAction SilentlyContinue
     if ($p -and ("$($p.DeveloperToolsAvailability)" -eq '2' -or "$($p.DeveloperToolsDisabled)" -eq '1')) { $blocked = $true }
   }
-  if ($blocked) { Report '확인' 'Chrome 개발자 도구' 'PC 관리 정책이 막고 있다. 브라우저 제어 확장은 붙지 못하고, Playwright 크롬도 막히는지는 처음 쓸 때 본다' }
+  if ($blocked) { Report '확인' 'Chrome 개발자 도구' 'PC 관리 정책이 막고 있어 브라우저 제어 확장은 붙지 못한다. Playwright를 쓴다' }
   $kcase = Join-Path ${env:ProgramFiles(x86)} 'Ksign\KCase\KCaseAgent.exe'
   if (${env:ProgramFiles(x86)} -and (Test-Path -LiteralPath $kcase)) { Report 'OK' '인증서 로그인 프로그램(KCase Agent)' }
   else { Report '없음' '인증서 로그인 프로그램(KCase Agent)' '업무포털 로그인 페이지 하단 [인증서프로그램다운로드]로 설치(서울 업무포털 기준)' }
