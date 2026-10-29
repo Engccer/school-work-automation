@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-  범용 MSHTML 브리지 — 최상위 창을 "제목 부분일치"로 찾아 임베디드 IE DOM 을 제어한다.
+  범용 MSHTML 브리지 · 최상위 창을 "제목 부분일치"로 찾아 임베디드 IE DOM 을 제어한다.
 
 .DESCRIPTION
   `kyul_dom.ps1` 은 대상 창을 `Get-Process WXSClient` + 제목 완전일치로 고정한다.
@@ -125,7 +125,7 @@ for ($i = 0; $i -lt [MsDom]::Handles.Count; $i++) {
   if ([MsDom]::Titles[$i] -like "*$TitleLike*") { $cands += $i }
 }
 if ($cands.Count -eq 0) { "ERR: 제목에 '$TitleLike' 포함된 창 없음"; exit 1 }
-if ($cands.Count -gt ($Index + 1)) { "WARN: 후보 $($cands.Count)개 — index $Index 사용" }
+if ($cands.Count -gt ($Index + 1)) { "WARN: 후보 $($cands.Count)개 · index $Index 사용" }
 $h = [MsDom]::Handles[$cands[$Index]]
 
 $srv = [MsDom]::FindIEServer($h)
@@ -138,7 +138,7 @@ if ($null -eq $win) { "ERR: parentWindow 없음"; exit 1 }
 $code = Get-Content -Path $JsFile -Raw -Encoding UTF8
 $el = Invoke-DomMethod $doc "createElement" @("script")
 Set-DomProp $el "type" "text/javascript"
-Set-DomProp $el "text" $code
+Set-DomProp $el "text" ([string]$code)
 $body = Get-DomProp $doc "body"
 Invoke-DomMethod $body "appendChild" @($el) | Out-Null
 

@@ -57,23 +57,23 @@ function Invoke-Native([string]$Exe, [string[]]$ArgList) {
 }
 
 Write-Log "시작 date=$Date"
-if (-not (Test-Path '\\관리자\$ALIM$\ALIM.DBF')) { Write-Log '서버(\\관리자\$ALIM$) 접근 불가 — 종료'; exit 1 }
+if (-not (Test-Path '\\관리자\$ALIM$\ALIM.DBF')) { Write-Log '서버(\\관리자\$ALIM$) 접근 불가 · 종료'; exit 1 }
 
 $out = & python (Join-Path $scripts 'alim_export.py') --date $Date 2>&1
 $exportCode = $LASTEXITCODE
 $out | ForEach-Object { Write-Log "export: $_" }
-if ($exportCode -ne 0) { Write-Log "alim_export 실패(종료 코드 $exportCode) — 종료"; exit 3 }
+if ($exportCode -ne 0) { Write-Log "alim_export 실패(종료 코드 $exportCode) · 종료"; exit 3 }
 
 # 날짜 폴더는 alim_export.py 가 정한다(ALIM_OUT_DIR). 저장 경로를 출력의 SAVED 줄에서 받는다.
 $saved = $out | ForEach-Object { "$_" } | Where-Object { $_ -like 'SAVED *' } | Select-Object -First 1
-if (-not $saved) { Write-Log '전달사항 없음 — 종료'; exit 0 }
+if (-not $saved) { Write-Log '전달사항 없음 · 종료'; exit 0 }
 $folder = Split-Path $saved.Substring(6)
 $label = Split-Path -Leaf $folder
 $summary = Join-Path $folder "$label 알림장 첨부 요약.txt"
 
 $atts = @(Get-ChildItem -LiteralPath $folder -Filter '첨부*' -File -ErrorAction SilentlyContinue)
-if ($atts.Count -eq 0) { Write-Log '첨부 없음 — 요약 생략, 종료'; exit 0 }
-if ((Test-Path -LiteralPath $summary) -and -not $Force) { Write-Log '요약 파일 이미 있음 — 생략, 종료'; exit 0 }
+if ($atts.Count -eq 0) { Write-Log '첨부 없음 · 요약 생략, 종료'; exit 0 }
+if ((Test-Path -LiteralPath $summary) -and -not $Force) { Write-Log '요약 파일 이미 있음 · 생략, 종료'; exit 0 }
 
 # 첨부 텍스트 추출(결정론적). 추출본은 로컬 작업 폴더에만 두고 알림장 폴더에는 쓰지 않는다.
 $work = Join-Path $env:LOCALAPPDATA "알림장-자동화\extract\$Date"
@@ -82,7 +82,7 @@ Get-ChildItem (Split-Path $work) -Directory -ErrorAction SilentlyContinue |
 $ext = & python (Join-Path $scripts 'extract_attachments.py') $folder $work 2>&1
 $ext | ForEach-Object { Write-Log "extract: $_" }
 $mds = @(Get-ChildItem -LiteralPath $work -Filter '*.md' -File -ErrorAction SilentlyContinue)
-if ($mds.Count -eq 0) { Write-Log '추출된 텍스트 없음 — 요약 생략'; exit 2 }
+if ($mds.Count -eq 0) { Write-Log '추출된 텍스트 없음 · 요약 생략'; exit 2 }
 $extLines = ($ext | Where-Object { "$_" -match '^(OK|WARN|FAIL) ' }) -join "`n"
 
 $prompt = @"

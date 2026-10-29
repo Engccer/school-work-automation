@@ -65,7 +65,7 @@ Add-Type -TypeDefinition $sig
 $c = @()
 for ($i = 0; $i -lt [Dlg]::H.Count; $i++) { if ([Dlg]::T[$i] -like "*$TitleLike*") { $c += $i } }
 if ($c.Count -eq 0) { "ERR: 창 없음 ($TitleLike)"; exit 1 }
-"후보 $($c.Count)개 — index $Index 사용"
+"후보 $($c.Count)개 · index $Index 사용"
 $h = [Dlg]::H[$c[$Index]]
 "TITLE=" + [Dlg]::T[$c[$Index]] + "  CLASS=" + [Dlg]::C[$c[$Index]] + "  HWND=$h"
 

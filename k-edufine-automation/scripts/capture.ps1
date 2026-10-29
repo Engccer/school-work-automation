@@ -89,7 +89,7 @@ if ($w -le 0 -or $ht -le 0) { "ERR: 크기 0"; exit 1 }
 
 $bmp = New-Object System.Drawing.Bitmap($w, $ht)
 $g = [System.Drawing.Graphics]::FromImage($bmp)
-# 1순위: PrintWindow(PW_RENDERFULLCONTENT=2) — 다른 창에 가려져도 대상 창만 찍힌다
+# 1순위: PrintWindow(PW_RENDERFULLCONTENT=2) · 다른 창에 가려져도 대상 창만 찍힌다
 $hdc = $g.GetHdc()
 $ok = [CapWin]::PrintWindow($h, $hdc, 2)
 $g.ReleaseHdc($hdc)

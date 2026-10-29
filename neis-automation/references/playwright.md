@@ -1,4 +1,4 @@
-# Playwright — 업무포털 웹 업무의 기본 브라우저
+# Playwright · 업무포털 웹 업무의 기본 브라우저
 
 업무포털을 거치는 웹 업무(나이스·K-에듀파인·교데통) 공통. 세 스킬이 이 파일 하나를 참조한다.
 
@@ -30,6 +30,9 @@ DevTools 사용을 차단했습니다"가 뜨면 확정이다. 탭·크롬 재�
    `browser_click`(target `button:has-text("교육행정 전자서명 인증서 로그인")`)으로 인증서 창을 띄운 뒤,
    **사용자에게 "새로 뜬 크롬 창에서 인증서 암호를 입력해 달라"고 요청**한다(암호 입력은 자동화 금지).
    로그인 확인은 `browser_evaluate`로 `document.title === '업무포털 메인'`.
+   **클릭이 `element is visible, enabled` 뒤 시간 초과로 끝나면** 보안 프로그램 로딩 오버레이
+   (`.isloading-overlay`)가 버튼을 덮고 있는 것이다. 새로고침한 뒤 `run_code`에서 1.5초 간격으로
+   그 요소의 `display`가 `none`이 될 때까지 기다렸다가 `#btnLgn`을 누른다. → 사례
 2. **업무 시스템 진입**: 상단 메뉴([나이스]·[K-에듀파인]·[교데통])는 새 탭으로 열리므로
    `browser_run_code_unsafe`에서 이벤트 대기와 클릭을 함께 건다.
    ```js
@@ -44,6 +47,8 @@ DevTools 사용을 차단했습니다"가 뜨면 확정이다. 탭·크롬 재�
    }
    ```
    이어서 `browser_tabs`(`select`, 새 탭 index)로 작업 탭을 옮긴다.
+   새 탭 대기가 시간 초과되면 업무포털 공지 팝업이 메뉴를 덮고 있는 경우다. 팝업을 닫고 스크린샷으로
+   메뉴 위치를 다시 잡아 좌표 클릭과 `waitForEvent('page')`를 함께 건다.
 3. **화면 보기**: `browser_take_screenshot`(`scale: "css"`)이나 `run_code` 안의 `page.screenshot`.
    **저장 위치는 작업 폴더의 `.playwright-mcp/`만 허용된다**(스크래치 경로는 거부). 스크린샷 css 좌표가
    곧 클릭 좌표다.
@@ -57,22 +62,36 @@ DevTools 사용을 차단했습니다"가 뜨면 확정이다. 탭·크롬 재�
 6. **브라우저 대화상자(alert·confirm)**: `run_code` 안에서 뜬 대화상자는 처리하지 않으면 자동으로
    닫힌다(confirm은 취소로). 확인이 필요한 confirm은 `page.once('dialog', d => d.accept())`를 클릭 전에
    걸거나, 개별 도구 호출이면 `browser_handle_dialog`로 답한다.
-7. **파일 첨부**: 네이티브 "열기" 창을 띄우지 말고 `setInputFiles`로 input에 바로 넣는다. iframe 안
+7. **파일 첨부**: 페이지에 `input[type=file]`이 미리 있으면 `setInputFiles`로 바로 넣는다. iframe 안
    업로더도 `page.frameLocator('iframe[src*="..."]').locator('input[type=file]').setInputFiles(경로)`로
    닿으므로 브라우저 제어 확장에서 쓰던 임시 input·`DataTransfer` 다리가 필요 없다(미실측, 처음 쓸 때 화면
    표시로 검증).
+   **파일 선택 창**: 버튼을 눌러야 창이 뜨는 업로더(나이스 일괄파일업로드 등)는 다르다. 창이 뜨는
+   순간 **MCP가 그것을 가로채 `[File chooser]` 대기 상태**로 바꾼다. `run_code` 안에서
+   `waitForEvent('filechooser')` + `setFiles`를 걸어도 효과가 없고, `run_code`는 그 자리에서 결과를
+   돌려주지만 **남은 코드는 뒤에서 계속 돈다**. 이 상태에서는 `browser_evaluate`도 거부된다.
+   그러니 여러 파일을 반복문 하나로 올리지 않는다. → 사례
+   1. 창을 띄우는 클릭까지만 한 `run_code`에 넣는다.
+   2. `browser_file_upload`로 파일 **하나**를 넣는다.
+   3. 별도 호출로 미리보기를 대조하고 저장한다. 다음 파일은 1부터 되풀이한다.
+   잘못 뜬 창은 `browser_file_upload`를 경로 없이 불러 취소한다.
+   **다운로드**: 클릭 전에 `page.waitForEvent('download')`를 걸고 `download.saveAs(경로)`로 옮긴다.
+   `saveAs`를 해도 `.playwright-mcp/`에 `download-*.확장자` 사본이 하나 더 남는다(8번 정리 대상).
+   `run_code`에서는 `require`를 쓸 수 없어 로컬 파일을 읽지 못한다. 대조할 기대값은 코드 안에 넣거나
+   대조 자체를 스크립트 밖(Python 등)에서 한다.
    **저장은 한 `run_code`로 끝까지 묶을 수 있다**: `.cl-text`가 `저장`인 요소 중심 클릭 →
    `저장하시겠습니까` 문구가 보일 때까지 1초 간격 대기 → `확인` 중심 클릭 → `완료` 문구 대기 →
    알림 `확인` → [조회] 재실행 → `document.body.innerText`에서 그 행의 Byte·본문 확인.
    교과 세특·과목별독서활동에서 이 묶음 그대로 통했다.
-8. **정리**: `.playwright-mcp/`에는 학생·교직원 이름과 개인정보가 찍힌 스크린샷이 쌓인다.
-   **작업이 끝나면 폴더째 지운다.** Playwright 크롬 창은 업무포털 세션이 살아 있으니 사용자에게
+8. **정리**: `.playwright-mcp/`에는 학생·교직원 이름과 개인정보가 찍힌 스크린샷·화면 스냅숏(`page-*.yml`)·
+   콘솔 로그·다운로드 사본이 쌓인다. 작업 폴더가 동기화 폴더 안이면 그대로 동기화되므로
+   **작업이 끝나면 폴더째 지운다**(드라이브의 `desktop.ini`는 남겨도 된다). Playwright 크롬 창은 업무포털 세션이 살아 있으니 사용자에게
    닫아도 된다고 알린다.
 
 ## 업무 파일의 도구 이름 바꿔 읽기
 
 스킬 본문과 업무 파일의 도구 이름은 확장 기준이다. Playwright 경로에서는 아래처럼 바꿔 읽는다.
-Playwright로 끝까지 검증한 업무는 교과 세특·과목별독서활동이고, 나머지는 처음 쓸 때 화면으로 확인한다.
+Playwright로 끝까지 검증한 업무는 교과 세특·과목별독서활동·수행평가 일괄업로드이고, 나머지는 처음 쓸 때 화면으로 확인한다.
 
 | 업무 파일의 표현 | Playwright |
 |---|---|
@@ -85,7 +104,7 @@ Playwright로 끝까지 검증한 업무는 교과 세특·과목별독서활동
 | 폼 값 설정 | `browser_fill_form`·`browser_select_option`(DIV 드롭다운에는 둘 다 안 통한다) |
 | 탭 목록 조회, 새 탭 ID | `browser_tabs` |
 | 일괄 실행 | `run_code` 하나에 묶는다 |
-| 파일 업로드, 임시 input 다리 | `setInputFiles`(공통 절차 7) |
+| 파일 업로드, 임시 input 다리 | `setInputFiles`, 파일 선택 창이면 `browser_file_upload`(공통 절차 7) |
 | 창 크기 조정 | `page.setViewportSize` |
 | 페이지 텍스트 추출 | `page.evaluate(() => document.body.innerText)` |
 

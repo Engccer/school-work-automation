@@ -127,7 +127,7 @@ def clean(text: str) -> str:
 
 
 def entries(row, depts):
-    """[(부서명, 본문)] — 비어 있는 칸 제외."""
+    """[(부서명, 본문)] · 비어 있는 칸 제외."""
     res = []
     for i in range(1, 21):
         body = clean(row[f"ALME{i:02d}"])

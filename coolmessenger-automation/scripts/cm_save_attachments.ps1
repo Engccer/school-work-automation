@@ -1,8 +1,9 @@
 ﻿# 쿨메신저 받은메시지의 첨부파일을 골라서 일괄로 내려받아 지정 폴더에 모은다.
 #
-#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest "$env:USERPROFILE\Documents\수합\체크리스트"
-#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest '...' -WhatIf   # 대상만 확인
-#   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.ps1 -Match '*' -From '홍길동' -Dest '...'       # 그 사람이 보낸 첨부만
+#   pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest "$env:USERPROFILE\Documents\수합\체크리스트"
+#   pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest '...' -WhatIf   # 대상만 확인
+#   pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.ps1 -Match '*' -From '홍길동' -Dest '...'       # 그 사람이 보낸 첨부만
+#   ... -Overwrite                                                                                                                   # 저장 폴더의 같은 이름 파일을 덮어쓰고 받기
 #
 # 저장 위치는 레지스트리 DownPath로 정해져 있고 선택할 수 없다.
 # 그래서 저장된 파일을 파일명으로 찾아 -Dest로 옮기는 방식으로 동작한다.
@@ -13,7 +14,8 @@ param(
     [Parameter(Mandatory)][string]$Dest,       # 모아 둘 폴더
     [string]$From,                             # 보낸사람 이름에 이 문구가 들어간 것만
     [string[]]$WatchDirs,                      # 저장 위치 후보(생략 시 기본값)
-    [int]$DownloadTimeoutSec = 25
+    [int]$DownloadTimeoutSec = 25,
+    [switch]$Overwrite                         # 저장 폴더에 같은 이름이 있어도 덮어쓰고 받는다
 )
 [Console]::OutputEncoding = [Text.Encoding]::UTF8   # 에이전트가 출력을 받아도 한글이 깨지지 않게
 
@@ -31,8 +33,10 @@ if (-not $WatchDirs) {
 }
 # 실제 저장 위치는 레지스트리 DownPath다. 이것이 빠져 있으면 파일을 저장해 놓고도 못 찾아
 # 전부 '저장안됨'으로 끝난다.
+$DownPath = $null
 try {
-    $WatchDirs = @((Get-ItemProperty 'HKCU:\Software\Jiransoft\CoolMsg50\Option\GetFile' -ErrorAction Stop).DownPath) + $WatchDirs
+    $DownPath = (Get-ItemProperty 'HKCU:\Software\Jiransoft\CoolMsg50\Option\GetFile' -ErrorAction Stop).DownPath
+    $WatchDirs = @($DownPath) + $WatchDirs
 } catch {}
 # 열린 탐색기 창의 폴더도 폴백 후보에 넣는다(저장 후 탐색기가 저장 폴더로 열릴 때가 있다).
 foreach ($w in (New-Object -ComObject Shell.Application).Windows()) {
@@ -73,7 +77,7 @@ foreach ($t in $targets) {
     $sender = $t.C0
     $file   = $t.C3
     if (Test-Path (Join-Path $Dest $file)) {
-        Write-Host "  SKIP  $sender — 이미 보관됨"
+        Write-Host "  SKIP  $sender · 이미 보관됨"
         $result += [pscustomobject]@{ 보낸사람=$sender; 파일=$file; 결과='이미보관' }
         continue
     }
@@ -82,30 +86,42 @@ foreach ($t in $targets) {
     # 새 메시지가 들어오면 행이 밀리므로 인덱스를 다시 찾는다. 같은 파일명을 여러 사람이 보냈을 수 있어 보낸사람까지 맞춘다.
     $cur = (Read-CMList -List $list).Rows | Where-Object { $_.C3 -eq $file -and $_.C0 -eq $sender } | Select-Object -First 1
     if (-not $cur) {
-        Write-Host "  MISS  $sender — 목록에서 사라짐"
+        Write-Host "  MISS  $sender · 목록에서 사라짐"
         $result += [pscustomobject]@{ 보낸사람=$sender; 파일=$file; 결과='목록없음' }
         continue
     }
     if (-not (Select-CMMessage -MsgWin $msgWin -List $list -ExpectSender $sender -Index $cur.Index)) {
-        Write-Host "  FAIL  $sender — 미리보기 전환 실패"
+        Write-Host "  FAIL  $sender · 미리보기 전환 실패"
         $result += [pscustomobject]@{ 보낸사람=$sender; 파일=$file; 결과='선택실패' }
+        continue
+    }
+
+    # 저장 폴더에 같은 이름이 남아 있으면 덮어쓰기 확인 창이 떠 전송이 멈춘다. 먼저 걸러 낸다.
+    if (-not $Overwrite -and $DownPath -and (Test-Path (Join-Path $DownPath $file))) {
+        $why = "동명파일(저장폴더 '$DownPath'에 같은 이름이 있음 · 치우고 재시도하거나 -Overwrite)"
+        Write-Host "  SKIP  $sender · $why"
+        $result += [pscustomobject]@{ 보낸사람=$sender; 파일=$file; 결과=$why }
         continue
     }
 
     $t0 = Get-Date
     [void][CM]::Msg($save, 0x00F5, [IntPtr]0, [IntPtr]0)     # BM_CLICK
-    $state = Wait-CMDownload -TimeoutSec $DownloadTimeoutSec
+    $state = Wait-CMDownload -TimeoutSec $DownloadTimeoutSec -Overwrite:$Overwrite
     Start-Sleep -Seconds 2
     $saved = Find-SavedFile -FileName $file -Since $t0
 
     if (-not $saved) {
-        $why = if ($state -eq 'STALLED') { '전송멈춤(관리함에서 재시도)' } else { '저장안됨' }
-        Write-Host "  FAIL  $sender — $why"
+        $why = switch ($state) {
+            'DUPLICATE' { "동명파일(저장폴더 '$DownPath'에 같은 이름이 있음 · 치우고 재시도하거나 -Overwrite)" }
+            'STALLED'   { '전송멈춤(관리함에서 재시도)' }
+            default     { '저장안됨' }
+        }
+        Write-Host "  FAIL  $sender · $why"
         $result += [pscustomobject]@{ 보낸사람=$sender; 파일=$file; 결과=$why }
         continue
     }
     Move-Item $saved $Dest -Force
-    Write-Host "  OK    $sender — $file"
+    Write-Host "  OK    $sender · $file"
     $result += [pscustomobject]@{ 보낸사람=$sender; 파일=$file; 결과='저장' }
 }
 

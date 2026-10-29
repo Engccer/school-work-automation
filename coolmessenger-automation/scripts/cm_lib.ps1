@@ -246,18 +246,37 @@ function Close-CMDialog {
 }
 
 function Wait-CMDownload {
-    <#  '파일 다운로드 중' 창 처리.
+    <#  저장 뒤에 뜨는 창 처리. 'OK' / 'DUPLICATE' / 'STALLED'를 돌려준다.
 
-        다운로드가 0 bytes에서 멈춘 채 창이 오류 없이 남을 때가 있다(57분 멈춘 적이 있다).
-        조용히 실패하므로 저장 뒤에는 반드시 이 함수로 확인한다.
-        STALLED면 메시지 관리함(제목 '메시지 관리함')에서 다시 시도한다. #>
-    param([int]$TimeoutSec = 25)
+        DUPLICATE: 저장 폴더(DownPath)에 같은 이름 파일이 있으면 '같은 이름을 가진 파일이 이미
+        존재합니다' 창이 떠 전송이 멈춘다. 이 창을 모르면 '파일 다운로드 중'만 찾다가 제한 시간을
+        넘겨 STALLED로 잘못 보고하고, 관리함에서 몇 번을 재시도해도 같은 창이 또 떠 영영 못 받는다.
+        STALLED: 다운로드가 0 bytes에서 멈춘 채 창이 오류 없이 남는 경우(57분 멈춘 적이 있다).
+        관리함(제목 '메시지 관리함')에서 다시 시도한다.
+
+        -Overwrite면 [다시받기]를 눌러 저장 폴더의 같은 이름 파일을 덮어쓴다(미실측 경로).
+        덮어쓰기는 DownPath의 기존 파일을 잃는 조작이라 기본값이 아니다. #>
+    param([int]$TimeoutSec = 25, [switch]$Overwrite)
     Start-Sleep -Milliseconds 1500      # 창이 뜨기 전에 확인하면 성공으로 오인한다
     $deadline = (Get-Date).AddSeconds($TimeoutSec)
     $dlg = [IntPtr]::Zero
+    $idle = 0
     while ((Get-Date) -lt $deadline) {
+        $dup = Find-CMWindow -TitlePattern '이미 존재'
+        if ($dup -ne [IntPtr]::Zero) {
+            if ($Overwrite) {
+                [void](Close-CMDialog -Dialog $dup -ButtonText '다시받기')
+            } else {
+                [void](Close-CMDialog -Dialog $dup -ButtonText '받기취소')
+                return 'DUPLICATE'
+            }
+        }
         $dlg = Find-CMWindow -TitlePattern '파일 다운로드 중'
-        if ($dlg -eq [IntPtr]::Zero) { return 'OK' }     # 창이 없으면 이미 끝난 것
+        if ($dlg -eq [IntPtr]::Zero) {
+            # 확인 창이 늦게 뜨기도 해 한 번 더 돌아본 뒤에 끝난 것으로 본다
+            $idle++
+            if ($idle -ge 2) { return 'OK' }
+        } else { $idle = 0 }
         Start-Sleep -Milliseconds 800
     }
     if ($dlg -ne [IntPtr]::Zero -and [CM]::IsWindow($dlg)) {

@@ -3,7 +3,7 @@
   (브라우저 업로더의 "열기" 창에는 쓰지 않는다. 파일이 렌더러에 전달되지 않는다.)
   - 파일 이름 편집란(class=Edit, id=1148)에 WM_SETTEXT 로 전체 경로를 넣는다.
     WM_SETTEXT 는 시스템이 문자열을 마샬링해 주는 안전한 메시지다.
-    (WM_USER 계열에 문자열 포인터를 넘기면 대상 프로세스가 죽는다 — 절대 금지)
+    (WM_USER 계열에 문자열 포인터를 넘기면 대상 프로세스가 죽는다 · 절대 금지)
   - 그 다음 WM_COMMAND 로 [열기](id=1) 를 누른다.
   사용: powershell -NoProfile -ExecutionPolicy Bypass -File pick_file.ps1 -TitleLike "열기" -Path "C:\...\a.hwpx"
 #>
@@ -72,7 +72,7 @@ $edit = [Pick]::FoundEdit
 if ($edit -eq [IntPtr]::Zero) { "ERR: 파일 이름 편집란(id=1148) 없음"; exit 1 }
 "EDIT hwnd=$edit"
 
-# WM_SETTEXT = 0x000C — 공백·괄호가 있으므로 따옴표로 감싼다
+# WM_SETTEXT = 0x000C · 공백·괄호가 있으므로 따옴표로 감싼다
 $quoted = '"' + $Path + '"'
 [Pick]::SendText($edit, 0x000C, [IntPtr]::Zero, $quoted) | Out-Null
 Start-Sleep -Milliseconds 500

@@ -2,9 +2,9 @@
 name: coolmessenger-automation
 license: MIT
 description: >-
-  교내 메신저 쿨메신저(CoolMessenger)로 이미 주고받은 메시지를 다룬다. 로컬 SQLite DB를 읽어 받은·보낸 메시지를 상대·시작 일시·문구로 조회하고, 회신 내용을 정리하며, 받은 메시지의 첨부파일을 내려받고, 회신 작성 창과 이전에 보낸 메시지의 받는사람을 재사용한 새 메시지 작성 창을 채운다(보내기는 사용자 확인 뒤). 다음 요청에 사용한다. "○○ 선생님과 주고받은 메시지 찾아 줘", "선생님들 답장 왔는지 봐 줘", "회신 취합해 줘", 대상자 명단과 대조한 회신자·미회신자 구분, "첨부파일 다 받아서 정리해 줘", "○○ 선생님이 보낸 파일 받아 줘", 받은 메시지의 첨부파일 내려받기, 받은·보낸 메시지 검색·내보내기, 지정한 사람의 최근 메시지에 회신 보내기 준비, 이전에 보낸 메시지의 받는사람에게 새 메시지 보내기([전체 회신]으로 받는사람 재사용). 보낼 문안을 새로 쓰는 일은 이 스킬의 범위 밖이다. CoolMessenger, message search, read replies, reply tracking, download received attachments, message database.
+  교내 메신저 쿨메신저(CoolMessenger)로 이미 주고받은 메시지를 다룬다. 로컬 SQLite DB를 읽어 받은·보낸 메시지를 상대·시작 일시·문구로 조회하고, 회신 내용을 정리하며, 받은 메시지의 첨부파일을 내려받고, 회신 작성 창과 새 메시지 작성 창을 채워 보낸다(보내기는 사용자가 발송에 동의했을 때). 다음 요청에 사용한다. "○○ 선생님과 주고받은 메시지 찾아 줘", "선생님들 답장 왔는지 봐 줘", "회신 취합해 줘", 대상자 명단과 대조한 회신자·미회신자 구분, "첨부파일 다 받아서 정리해 줘", "○○ 선생님이 보낸 파일 받아 줘", 받은 메시지의 첨부파일 내려받기, 받은·보낸 메시지 검색·내보내기, 지정한 사람의 최근 메시지에 회신 보내기 준비, 여러 사람에게 같은 안내문을 한 통씩 따로 보내기(개별 발송, 사람마다 다른 파일 첨부), 이전에 보낸 메시지의 받는사람에게 새 메시지 보내기([전체 회신]으로 받는사람 재사용). 보낼 문안을 새로 쓰는 일은 이 스킬의 범위 밖이다. CoolMessenger, message search, read replies, reply tracking, download received attachments, send individually, message database.
 metadata:
-  version: "1.4.1"
+  version: "1.6.0"
 ---
 
 # 쿨메신저 자동화
@@ -29,11 +29,23 @@ metadata:
 
 ### 실행 전제
 
-`cm_export.py`는 `python`으로, `.ps1` 스크립트는 `powershell -NoProfile -ExecutionPolicy Bypass -File`로 실행한다.
+`cm_export.py`는 `python`으로, `.ps1` 스크립트는 **`pwsh`(7)**로 실행한다
+(`pwsh -NoProfile -ExecutionPolicy Bypass -File`).
+
+**Windows PowerShell 5.1로는 돌리지 않는다.** 대상 프로세스 메모리를 읽는 함수(`Read-CMList`,
+`Get-CMRowPoint`, `cm_tree.ps1` 전부)가 쓰는 `[UIntPtr]4096` 형변환이 5.1에서
+`Cannot convert the "4096" value of type "System.Int32" to type "System.UIntPtr"`로 죽는다.
+리터럴이어도 막히므로 우회할 방법이 없다(실측). → 사례
+
+Windows PowerShell 5.1로 띄우는 임시 `.ps1`에 한글 경로나 문구가 있으면 **UTF-8 BOM으로 저장**한다.
+파일 편집 도구가 만든 BOM 없는 UTF-8 스크립트는 ANSI로 읽혀 경로가 깨질 수 있다.
+`[Console]::OutputEncoding`은 출력 설정일 뿐 스크립트 해독 오류를 고치지 않는다.
+본문 `.txt`는 BOM 없이 저장해도 `Get-Content -Raw -Encoding UTF8`로 명시해 읽으면 된다.
+현재 셸에서 라이브러리 로드가 출력 없이 종료되면 원인을 단정하지 말고 위의 `pwsh -File` 실행 경로로 재확인한다.
 
 아래 명령은 모두 스킬 루트에서 실행한다.
 
-## 1. 메시지 읽기 — DB 직접 읽기 (기본 경로)
+## 1. 메시지 읽기 · DB 직접 읽기 (기본 경로)
 
 메시지가 **암호화 없는 평문 SQLite**로 통째로 남는다.
 
@@ -43,8 +55,8 @@ metadata:
 
 | 테이블 | 내용 |
 |---|---|
-| `tbl_recv` | 받은 메시지 — `Sender` `Title` `MessageText` `ReceiveDate` `FilePath` `IsUnRead` |
-| `tbl_send` | 보낸 메시지 — `Receiver` `Title` `MessageText` `SendDate` `FilePath` |
+| `tbl_recv` | 받은 메시지 · `Sender` `Title` `MessageText` `ReceiveDate` `FilePath` `IsUnRead` |
+| `tbl_send` | 보낸 메시지 · `Receiver` `Title` `MessageText` `SendDate` `FilePath` |
 | `tbl_member` | 조직 구성원 |
 
 ```bash
@@ -69,7 +81,7 @@ python scripts/cm_export.py --sent --since 2026-09-01 --format json
 
 시간만으로 거르면 무관한 전체 공지가 섞인다. 두 조건을 같이 쓴다.
 
-1. 본문에 인용 표시(`님이 보낸글`)가 있을 것 — 회신이라는 증거
+1. 본문에 인용 표시(`님이 보낸글`)가 있을 것 · 회신이라는 증거
 2. 보낸사람이 대상자 명단에 있을 것
 
 ## 2. 받은 메시지 첨부파일 내려받기
@@ -83,8 +95,8 @@ python scripts/cm_export.py --sent --since 2026-09-01 --format json
 첨부가 여러 건인 메시지는 아래 「`그룹파일`」 절을 따르고, 관리함 목록 앞쪽 200행보다 오래된 메시지는 내보내기에는 보여도 받아지지 않는다.
 
 ```bash
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest "$env:USERPROFILE\Documents\수합\체크리스트"
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.ps1 -Match '*' -From 홍길동 -Dest "$env:USERPROFILE\Downloads\홍길동"
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.ps1 -Match '*체크리스트*' -Dest "$env:USERPROFILE\Documents\수합\체크리스트"
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.ps1 -Match '*' -From 홍길동 -Dest "$env:USERPROFILE\Downloads\홍길동"
 ```
 
 동작: 메시지 관리함 목록을 읽어 → 첨부파일명이 패턴과 맞는(그리고 `-From`에 맞는) 행을 **실제 마우스로 클릭** →
@@ -123,17 +135,66 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.
 
 ### 다운로드가 멈추는 경우
 
-`파일 다운로드 중` 창이 속도 0으로 멈춘 채 **오류 없이** 남아 있을 수 있다(실측 57분).
-`Wait-CMDownload`가 제한 시간 뒤 [취소]를 눌러 정리하고 `STALLED`를 돌려준다.
-이때는 **관리함에서 다시 시도**하고, 그래도 안 되면 재전송을 요청한다.
+**먼저 저장 폴더(`DownPath`)에 같은 이름 파일이 있는지 본다.** 있으면 쿨메신저가
+`같은 이름을 가진 파일이 이미 존재합니다` 창([다시받기] [다른이름] [넘어가기] [받기취소])을
+띄우고 전송이 거기서 멈춘다. 이 창은 제목이 달라 `파일 다운로드 중`만 찾으면 안 보이므로,
+**전송멈춤으로 오진하기 쉽고 관리함에서 다시 시도해도 같은 창이 또 떠 영영 못 받는다.**
+`-Dest` 충돌(`이미보관`)과는 다른 문제다. → 사례
+
+`cm_save_attachments.ps1`이 저장을 누르기 전에 `DownPath`의 동명 파일을 검사해
+`동명파일(저장폴더 …)`로 걸러 내고, `Wait-CMDownload`도 이 창을 만나면 [받기취소] 후
+`DUPLICATE`를 돌려준다. 해결은 둘 중 하나다.
+
+- **저장 폴더의 그 파일을 치우고 다시 받는다**(실측으로 통한 방법). `DownPath`가 업무 폴더로
+  잡혀 있으면 작업 파일과 부딪히기 쉬우니 지우지 말고 옮긴다.
+- `-Overwrite`를 준다. [다시받기]를 눌러 **저장 폴더의 기존 파일을 덮어쓴다**(미실측 경로).
+
+그 다음이 진짜 전송 멈춤이다. `파일 다운로드 중` 창이 속도 0으로 멈춘 채 **오류 없이**
+남아 있을 수 있다(실측 57분). `Wait-CMDownload`가 제한 시간 뒤 [취소]를 눌러 정리하고
+`STALLED`를 돌려준다. 이때는 **관리함에서 다시 시도**하고, 그래도 안 되면 재전송을 요청한다.
 
 ### 목록 필터
 
 목록 위 드롭다운이 `안읽은 메시지`로 되어 있으면 읽은 것은 안 보인다. `전체 메시지`로
-바꾼다 — 드롭다운은 커스텀 팝업(`CMenuEx`)이라 버튼을 클릭해 연 뒤 항목을 다시 클릭해야
+바꾼다 · 드롭다운은 커스텀 팝업(`CMenuEx`)이라 버튼을 클릭해 연 뒤 항목을 다시 클릭해야
 하고, 고르고 나면 팝업 창이 남으므로 `WM_CLOSE`로 닫는다.
 
-## 3. 회신 작성 — 채우기까지만, 발송은 사용자
+## 3. 회신·새 메시지 작성 · 발송 동의 범위에서 처리
+
+사용자가 수신자·본문을 지정해 "발송해 줘"라고 요청했다면 발송에 동의한 것이다.
+받는사람과 본문을 검증한 뒤 발송하고 DB로 확인한다. 초안·작성만 요청했다면 채우기까지만 한다.
+
+### 조직도에서 한 사람에게 새 메시지 작성 · `cm_send_new.ps1`
+
+같은 안내문을 여러 사람에게 **개별 발송**할 때(한 통씩 따로, 각자 다른 첨부) 이 경로를 쓴다.
+받는사람이 한 명뿐이라 오발송 위험이 가장 낮다.
+
+```bash
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/cm_send_new.ps1 `
+     -Name 홍길동 -TitleFile 제목.txt -BodyFile 본문.txt -Attach '.\양식.hwp' -Shot shot.png [-Send]
+```
+
+사람 수만큼 돌린다. `-Send` 없이 부르면 채우기까지만 하고 캡처를 남긴다.
+스크립트가 하는 일과 그 근거는 다음과 같다.
+
+- 조직도는 메인 창의 `SysTreeView32`(`GetWindowText`가 `조직도`)다. `cm_tree.ps1`이 트리를 펼치며
+  항목을 모으고, 이름이 **두 개 이상의 계정 글자**에 걸리면 동명이인이므로 멈춘다.
+- **한 사람이 조직도 여러 곳에 중복해 나온다**(부서별). 계정 글자가 같으면 아무 곳이나 써도 된다.
+- 화면 밖 항목은 좌표가 음수로 나오므로 `TVM_ENSUREVISIBLE` **뒤에 좌표를 다시 읽는다.**
+  클릭 직전 `WindowFromPoint`로 그 좌표가 트리 위인지 확인한다.
+- 더블클릭은 커서를 둔 뒤 `mouse_event` down/up 쌍을 **80ms 간격으로 두 번**(실측 성공).
+  `Invoke-CMClick`은 내부 대기가 있어 두 번 연속 불러도 더블클릭이 되지 않고,
+  단순 선택 뒤 Enter도 작성 창을 열지 못했다.
+- **작성 창은 손대지 않으면 저절로 닫힌다**(실측). 그래서 열기·제목·본문·첨부를 **한 번의 실행**에서
+  끝내야 한다. 열어 두고 다음 호출에서 채우려 하면 창이 이미 없다.
+- 받는사람 라벨은 `이름(학년-반) 번호 담당(이름)` 꼴이다. 스크립트가 **한 명인지, 그 사람인지**
+  확인하고 아니면 발송하지 않는다.
+- 제목은 `Edit` **id=4362**. 클립보드로 붙인 뒤 `GetWindowText`로 읽으면 **빈 문자열**이지만
+  실제로는 들어가 있다(캡처와 `tbl_send.Title`로 확인). 비었다고 다시 넣지 않는다.
+- 첨부가 붙으면 창 하단에 `파일명 (NN KB)` 라벨이 생긴다. 스크립트는 파일명으로 대조한다.
+- 검색란 붙여넣기가 화면에 반영되지 않으면 검색 성공으로 간주하지 말고 조직도를 이용한다.
+
+### 받은 메시지에 회신 작성
 
 `메시지 회신 (Ctrl+R)` → `메시지 전송 (크롬에디터)` 창이 뜬다. 받는사람은 자동으로 채워진다.
 
@@ -148,7 +209,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.
 `PrintWindow`로 캡처해 **받는사람과 본문을 눈으로 확인**한다. 교내 메신저는 한 번
 나가면 회수가 번거롭고 수신자가 바로 읽는다.
 
-### 여러 명에게 새 메시지 보내기 — 보낸 메시지의 [전체 회신]으로 받는사람을 재사용
+### 여러 명에게 새 메시지 보내기 · 보낸 메시지의 [전체 회신]으로 받는사람을 재사용
 
 조직도에서 여러 명을 고르는 대신, 같은 대상에게 보냈던 메시지를 관리함 **[보낸메시지]** 탭에서
 클릭하고 **[전체 회신 (Ctrl+Shift+R)]**을 누르면 받는사람이 통째로 채워진 작성 창이 뜬다
@@ -163,11 +224,17 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/cm_save_attachments.
 
 ### 발송 확인은 창이 닫힌 것으로 판단하지 않는다
 
-`보내기`의 `BM_CLICK`은 **5~15초 늦게 반영될 때가 있다.** 창이 안 닫혔다고 다시
+`보내기`의 `BM_CLICK`은 **15초를 넘겨 늦게 반영될 수도 있다.** 창이 안 닫혔다고 다시
 누르면 중복 발송이 되고, 반대로 창이 닫혔다고 발송을 단정해도 안 된다.
 `cm_reply.ps1 -Send`도 4초 뒤 창이 닫혔는지만 알려 주고 `tbl_send` 확인을 안내한다.
 `회신 창이 아직 열려 있습니다`가 떠도 다시 누르지 않는다.
 **`tbl_send`를 조회해 실제로 들어갔는지 확인한다.**
+
+첫 DB 조회가 0건이어도 미발송 증거로 삼아 다시 누르지 않는다. 발송 클릭 이후에는 UI 재시도를 멈추고
+새 DB 사본(WAL 포함)으로 수신자·본문·시각을 몇 초 간격으로 재조회한다. 60초 동안 확인되지 않으면
+상태 미확인으로 보고하고 자동 재발송하지 않는다(60초는 운영상 조회 제한이며 서버 지연의 상한이 아니다).
+클릭 후 작성 창이 사라져 활성화가 실패한 경우에도 먼저 DB를 확인한다.
+구체적 실측 경위는 [references/cases.md](references/cases.md)의 「발송 확인」을 참고한다.
 
 ```bash
 python scripts/cm_export.py --sent --since "2026-09-22 12:00" --out sent.csv
@@ -191,7 +258,7 @@ python scripts/cm_export.py --sent --since "2026-09-22 12:00" --out sent.csv
 
 ## 4. 창 조작의 함정 (전부 실측)
 
-### 포그라운드 잠금 — ALT 트릭이 필요하다
+### 포그라운드 잠금 · ALT 트릭이 필요하다
 
 `SetForegroundWindow`는 그냥은 **조용히 실패**한다(`True`를 반환해도 활성화 안 됨).
 그러면 실제 마우스 클릭이 **화면 맨 앞의 엉뚱한 창(크롬 등)으로 간다.**
@@ -218,7 +285,7 @@ python scripts/cm_export.py --sent --since "2026-09-22 12:00" --out sent.csv
 
 | 대상 | 통하는 방법 |
 |---|---|
-| 메인·관리함·작성 창의 버튼(`메시지관리함 열기`·`모든파일 저장`·`메시지 회신`·`보내기`) | `BM_CLICK`(0x00F5) — 단 창이 활성 상태여야 할 때가 있다 |
+| 메인·관리함·작성 창의 버튼(`메시지관리함 열기`·`모든파일 저장`·`메시지 회신`·`보내기`) | `BM_CLICK`(0x00F5) · 단 창이 활성 상태여야 할 때가 있다 |
 | 모달 대화상자의 버튼(`파일 다운로드 중`의 [취소], 첨부 "열기" 창의 [열기]) | `WM_COMMAND` + **컨트롤 ID** (`파일 다운로드 중`에서는 `BM_CLICK`이 무시됐다) |
 | 그 밖의 창 | `BM_CLICK`을 보내고 창에 변화가 없으면 `WM_COMMAND` + 컨트롤 ID |
 | 커스텀 팝업(`CMenuEx`) 항목 | 실제 마우스 클릭 |
@@ -253,14 +320,17 @@ foreach ($t in [CM]::Tops([uint32](Get-CMPid))) {
 
 정상 상태는 `COOLMESSENGER`(메인) + `N개의 안읽은 메시지`(수신 알림 창, 관리함 아님) 정도다.
 `파일 다운로드 중`, `메시지 전송 (크롬에디터)`, `CMenuEx`가 남아 있으면 정리한다.
+창 닫기는 `[void][CM]::PostMessage($h, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)`다(`[CM]::Post`는 없다).
 클립보드를 테스트로 덮어썼다면 되돌려 놓는다.
 
 ## 파일
 
 | 경로 | 용도 |
 |---|---|
-| `scripts/cm_export.py` | DB에서 메시지 내보내기(CSV/JSON) — 읽기 전용 |
+| `scripts/cm_export.py` | DB에서 메시지 내보내기(CSV/JSON) · 읽기 전용 |
 | `scripts/cm_lib.ps1` | 창·목록·대화상자 조작 공용 함수 |
+| `scripts/cm_tree.ps1` | 조직도 트리 열거·좌표·더블클릭 |
+| `scripts/cm_send_new.ps1` | 조직도에서 한 사람에게 새 메시지(제목·본문·첨부, `-Send`로 발송까지) |
 | `scripts/cm_save_attachments.ps1` | 받은 메시지 첨부 내려받기 |
 | `scripts/cm_reply.ps1` | 회신 창 열고 본문 채우기(`-Send`로 발송까지) |
 | `scripts/tests/` | 가짜 DB·가짜 창 함수로 도는 시험(`python -m unittest discover -s scripts/tests`, `pwsh -File scripts/tests/test_cm_lib.ps1`) |

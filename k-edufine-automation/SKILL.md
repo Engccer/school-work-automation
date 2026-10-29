@@ -4,7 +4,7 @@ license: MIT
 description: >-
   서울 업무포털을 거쳐 K-에듀파인(klef.sen.go.kr)의 공문 업무를 자동화한다. 목록은 브라우저 자동화(기본 Playwright)로, 결재·기안 문서 창(WXSClient)은 PowerShell MSHTML 브리지와 실제 마우스 클릭으로 다룬다. 다음 요청에 사용한다. (1) 결재대기 공문 확인·판독, 접수 공문 본문·첨부 PC저장, 과제카드 지정·문서처리(접수) (2) 새 공문 기안·결재올림(상신): 내부결재, 대외시행 자동발송, 겸직허가 신청 등. "공문 올려 줘", "기안해 줘", "결재 올려 줘" (3) 문서등록대장에서 선례·발송 정보 찾기 (4) 기록물관리 점검 등에 따른 완료 문서 대국민공개여부(공개구분) 수정 (5) HwpODTpatch 보안 프로그램 설치 alert 반복, K-에듀파인 사용자지원서비스 질의. 교데통 자료 제출(전자결재 연계기안 포함)은 kyodetong-submit, 나이스 복무·출장 상신은 neis-automation이 맡는다. K-Edufine, official document, e-approval, drafting, document registry, WXSClient, MSHTML.
 metadata:
-  version: "5.3.1"
+  version: "5.4.0"
 ---
 
 # K-에듀파인 업무 자동화 (업무포털 → K-에듀파인 → 결재대기·기안)
@@ -16,14 +16,14 @@ metadata:
 
 - **목록·진입**: 브라우저(기본 Playwright 크롬) → 스킬 `neis-automation`의
   [references/playwright.md](../neis-automation/references/playwright.md)
-  (2단계의 [K-에듀파인] 새 탭 진입은 그 파일의 절차 2). 5단계 문서 열기로 WXSClient가 뜨는지는
-  Playwright에서 미확인이라, 문서 창이 뜨지 않으면 사용자에게 알리고 확장 경로로 바꾼다.
+  (2단계의 [K-에듀파인] 새 탭 진입은 그 파일의 절차 2). 5단계 문서 열기로 WXSClient가 뜨는 것은
+  Playwright에서도 확인됐다. 문서 창이 뜨지 않으면 Chrome의 네이티브 외부 앱 열기 확인창부터 확인한다.
 - **문서 창 내부 판독·필드 입력**: PowerShell MSHTML 브리지(6단계)
-  - `scripts/kyul_dom.ps1` — 결재 문서 창 전용(`Get-Process WXSClient` + 제목 완전일치)
-  - `scripts/mshtml_dom.ps1` — **제목 부분일치 범용판.** 기안 창과 모든 MSHTML 대화상자는
+  - `scripts/kyul_dom.ps1` · 결재 문서 창 전용(`Get-Process WXSClient` + 제목 완전일치)
+  - `scripts/mshtml_dom.ps1` · **제목 부분일치 범용판.** 기안 창과 모든 MSHTML 대화상자는
     제목이 달라 `kyul_dom.ps1` 로는 못 잡으므로 이걸 쓴다
 - **팝업 내부 조작**: **실제 마우스 클릭** (`scripts/click_screen.ps1`)
-  — 수신자지정·결재경로설정 같은 선택 팝업은 스크립트로 상태를 못 바꾼다(기안 10단계)
+  · 수신자지정·결재경로설정 같은 선택 팝업은 스크립트로 상태를 못 바꾼다(기안 10단계)
 
 창은 두 종류로 부른다. **MSHTML 대화상자**는 `Internet Explorer_TridentDlgFrame` 클래스에
 제목이 `… -- 웹 페이지 대화 상자` 인 팝업(파일저장·문서저장·과제카드·결재경로·임시저장 등)이고
@@ -49,7 +49,7 @@ metadata:
 
 **원격(외부망) 접속**: K-에듀파인은 **EVPN 연결 없이는 HTTP 응답 자체가 없다**(미연결이면
 타임아웃). 자택 등 학교 외부에서는 [neis-automation](../neis-automation/SKILL.md) 스킬의
-「원격(외부망) 접속 — EVPN」 절차(evpn.sen.go.kr → 웹 로그인 → AXGATE 클라이언트 로그인)로
+「원격(외부망) 접속 · EVPN」 절차(evpn.sen.go.kr → 웹 로그인 → AXGATE 클라이언트 로그인)로
 터널을 먼저 연결할 것. 터널은 중간에 끊길 수 있으므로, 원격 작업 중 응답이 사라지면 EVPN
 재연결부터 확인한다. → 사례
 
@@ -77,6 +77,7 @@ metadata:
 | 완료 문서의 대국민공개여부를 바꿔 달라는 요청(기록물관리 점검 등)을 받았을 때 | [references/공개구분수정.md](references/공개구분수정.md) (10-13). 문서등록대장 조회는 기안.md 10-11, Win32 메시지 창 버튼은 접수처리.md 8-6 |
 | `main.do`에서 `[HwpODTpatch]` 필수 보안 프로그램 alert가 되풀이되거나, K-에듀파인 사용자지원서비스에 질의를 등록할 때 | [references/한ODT-설치루프.md](references/한ODT-설치루프.md) |
 | 스크립트를 고치거나 새로 짤 때, 스크립트가 P/Invoke·COM 오류나 빈 값·빈 캡처를 내거나 대상 앱이 죽었을 때 | [references/기술노트.md](references/기술노트.md) |
+| 설치되어 있는 VeraPort가 미설치로 표시되거나, 최근 공문을 검색·대조·일괄 저장하고 폴더로 정리할 때 | [references/공문검색-수집.md](references/공문검색-수집.md) (로컬 접근 차단 진단, Playwright 검색, PC저장, 반복 안내 묶음) |
 | 규칙이 생긴 경위·날짜·변경 이력이 궁금할 때 | [references/cases.md](references/cases.md) |
 | 결재권자·부서 편제가 필요할 때 | 기관별 결재선(결재권자 실명·부서 편제)은 로컬 파일로 관리한다(예: `references/결재선-<학년도>.md`) |
 
@@ -85,7 +86,7 @@ metadata:
 ### 1단계: 업무포털 로그인 (나이스 스킬과 공통)
 
 업무포털 접속·인증서 로그인 핸드오프·공지 팝업 닫기는 neis-automation 스킬 1~3단계와
-동일하다. 인증서 비밀번호 입력은 자동화 금지 — 사용자가 직접 로그인한다.
+동일하다. 인증서 비밀번호 입력은 자동화 금지 · 사용자가 직접 로그인한다.
 
 ### 2단계: [K-에듀파인] 클릭 → 새 탭 진입
 
@@ -128,7 +129,7 @@ metadata:
 - 문서 제목 링크의 onclick은 `doCallClientApp(...)` (인자 4개). 클릭하면 결재 앱
   (`WXSClient.exe`, 창 제목 `HCLTAPP_KYUL_`)이 브라우저 밖 네이티브 창으로 실행된다.
 - **클릭 후 브라우저 화면에는 아무 변화가 없는 것이 정상**이다. 새 탭도 안 생기고
-  `window.open`도 호출되지 않는다(후킹해도 안 잡힌다). 실패로 오판해 반복 클릭하지 말 것 —
+  `window.open`도 호출되지 않는다(후킹해도 안 잡힌다). 실패로 오판해 반복 클릭하지 말 것 :
   **누른 횟수만큼 창이 중복 생성**된다. 열렸는지는 아래 "창 확인"으로 본다.
 
 #### 창 확인
@@ -150,7 +151,7 @@ metadata:
 - **창이 사라졌다고 곧바로 타임아웃으로 단정하지 말 것.** 저장 대화상자가 없어졌을 때는
   (1) 내가 보낸 잘못된 메시지로 앱이 죽었거나 (2) 부모 모달이 `fncClose()` 되며 함께
   닫힌 경우가 많다. `Get-Process WXSClient` 로 **앱 생존부터** 확인한다.
-- 중복 창이 떴으면 사용자에게 알리고 정리한다(임의로 닫지 말 것 — 저장 안 된 변경 위험).
+- 중복 창이 떴으면 사용자에게 알리고 정리한다(임의로 닫지 말 것 · 저장 안 된 변경 위험).
 
 ### 6단계: 결재 문서 창 내부 제어 (MSHTML 브리지)
 
@@ -214,7 +215,7 @@ powershell -STA -NoProfile -ExecutionPolicy Bypass -File scripts/mshtml_dom.ps1 
   그대로 남아 있고 브라우저 선택도 성공하므로, 모르고 계속 쓰면 **탭이 만들어지고
   스크린샷도 찍히는데 사용자 화면에는 아무것도 안 보인다**("이 컴퓨터 브라우저에 안
   열렸어"). 연결된 브라우저 목록 조회의 `name` 은 **목록 순서 라벨이라 고정 식별자가
-  아니다** — `Browser 1` 이 다른 창을 가리키게 된다. 판단 기준은 **`connectedAt` 이
+  아니다** · `Browser 1` 이 다른 창을 가리키게 된다. 판단 기준은 **`connectedAt` 이
   가장 큰 로컬(`isLocal:true`) 항목**. 사용자가 브라우저를 재시작했다고 하면 반드시
   목록부터 다시 뽑는다.
 
@@ -222,7 +223,7 @@ powershell -STA -NoProfile -ExecutionPolicy Bypass -File scripts/mshtml_dom.ps1 
 
 - 여러 조작은 한 번에 묶어 실행. 클릭 전 최신 스크린샷으로 좌표 확인.
 - 인증서 비밀번호·개인 자격증명 입력은 절대 자동화하지 않는다.
-- **세션이 죽으면 창이 줄줄이 뜬다 — 당황하지 말고 순서대로 정리한다.**
+- **세션이 죽으면 창이 줄줄이 뜬다 · 당황하지 말고 순서대로 정리한다.**
   팝업 내부를 스크립트로 험하게 다루면 서버 세션이 끊길 수 있다(→ 사례). 증상:
   별도 `IEFrame` 창에 "요청하신 서비스가 정상적으로 처리되지 않았습니다 / 사용자 정보를
   불러오지 못하였습니다", 제목이 빈 `-- 웹 페이지 대화 상자`, 이어서 `스크립트 오류`,
