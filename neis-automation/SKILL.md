@@ -4,7 +4,7 @@ license: MIT
 description: >-
   서울 업무포털(sen.eduptl.kr) 인증서 로그인 뒤 4세대 나이스(sen.neis.go.kr) 화면 업무를 브라우저 자동화(기본 Playwright)로 처리하고, 나이스 대국민서비스를 거친 정부24 교육제증명 발급도 맡는다. 다음 요청에 사용한다. (1) 나이스 접속·업무포털 진입, 학교 밖 EVPN 원격 접속 (2) 복무·결재: 근무상황(육아시간·근무시간면제·연가·조퇴) 신청, 출장 신청, 외부강의 신고 등록·현황 조회, 상신함 결재 내역 추출, "지난번과 같은 조건으로 올려 줘" (3) 성적: 정기고사 OMR 일괄채점, 문항별 정답률·학년 통계 조회, 학기 시작 선행작업(성취기준·수행평가 영역·반영비율 등록), 수행평가 성적을 양식 CSV로 일괄업로드·강의실별 일람표 출력 (4) 학생부 화면 입력: 교과 세특을 한두 명 화면에서 직접 입력(전출생 등), 과목별 독서활동, 동아리 이수시간 확인·특기사항 입력 (5) 월 급여명세서(나의지급명세서) 내려받기 (6) 재직증명서 등 교육제증명 발급 (7) 나이스광장 질의등록. 세특 문안 작성과 반 전체 세특양식 CSV 기입은 이 스킬의 범위 밖이고, K-에듀파인 공문은 k-edufine-automation, 교데통 제출은 kyodetong-submit이 맡는다. NEIS, Seoul education portal, leave request, business trip, outside lecture report, payslip, certificate of employment, OMR grading, item analysis, performance assessment bulk upload.
 metadata:
-  version: "2.11.0"
+  version: "2.11.1"
 ---
 
 # 나이스 업무 자동화 (업무포털 → 나이스 진입)

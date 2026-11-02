@@ -68,12 +68,14 @@ if (-not $win) { throw '작성 창이 열리지 않았습니다.' }
 [void](Set-CMActive ([IntPtr]$win))
 Start-Sleep -Milliseconds 400
 
-# 2. 받는사람 검증 · 라벨은 '이름(학년-반) 번호 담당(이름)' 꼴이다
+# 2. 받는사람 검증 · 학생 라벨은 '이름(학년-반) 번호 담당(이름)', 교직원 라벨은 '이름 계정번호 담당(이름)' 꼴이다
+#    (예: '홍길동 101 기획(홍길동)'). 첨부 라벨 '파일명 (NN KB)'은 두 꼴 어디에도 맞지 않는다.
 $kids = [CM]::Kids([IntPtr]$win)
 $recips = @()
 foreach ($k in $kids) {
     $t = [CM]::Txt($k)
-    if ($t -match '^\S+\(\d-\d\)' -and [CM]::IsWindowVisible($k)) { $recips += $t }
+    $isRecip = ($t -match '^\S+\(\d-\d\)') -or ($t -match '^\S+ \d+ .+\(\S+\)$')
+    if ($isRecip -and [CM]::IsWindowVisible($k)) { $recips += $t }
 }
 Write-Output "받는사람: $($recips -join ' | ')"
 if ($recips.Count -ne 1 -or $recips[0] -notlike "*$Name*") {
