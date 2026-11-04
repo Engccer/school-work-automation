@@ -23,7 +23,7 @@ DevTools 사용을 차단했습니다"가 뜨면 확정이다. 탭·크롬 재�
 
 ## 공통 절차
 
-먼저 [접속 환경 확인](../SKILL.md#접속-환경-확인)을 따른다. 아래 서울 URL·요소·화면 제목은 예시이며 확인한 교육청 주소와 현재 화면을 사용한다. 제어 가능한 탭에서 이미 로그인했다면 로그인 단계를 생략하고 현재 화면부터 이어간다.
+먼저 [접속 환경 확인](../SKILL.md#접속-환경-확인)을 따른다.
 
 쓰는 도구: `browser_navigate`·`browser_run_code_unsafe`·`browser_evaluate`·`browser_take_screenshot`·
 `browser_tabs`·`browser_click`·`browser_handle_dialog`·`browser_file_upload`·`browser_snapshot`·`browser_find`.
