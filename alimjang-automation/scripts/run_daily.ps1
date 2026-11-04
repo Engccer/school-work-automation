@@ -80,13 +80,28 @@ $work = Join-Path $env:LOCALAPPDATA "알림장-자동화\extract\$Date"
 Get-ChildItem (Split-Path $work) -Directory -ErrorAction SilentlyContinue |
   Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-14) } | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 $ext = & python (Join-Path $scripts 'extract_attachments.py') $folder $work 2>&1
+$extractCode = $LASTEXITCODE
 $ext | ForEach-Object { Write-Log "extract: $_" }
-$mds = @(Get-ChildItem -LiteralPath $work -Filter '*.md' -File -ErrorAction SilentlyContinue)
-if ($mds.Count -eq 0) { Write-Log '추출된 텍스트 없음 · 요약 생략'; exit 2 }
-$extLines = ($ext | Where-Object { "$_" -match '^(OK|WARN|FAIL) ' }) -join "`n"
+$extLines = ($ext | Where-Object { "$_" -match '^(OK|WARN|SKIP|FAIL) ' }) -join "`n"
+$report = Join-Path $folder "$label 알림장 첨부 처리 결과.txt"
+[IO.File]::WriteAllText($report, $extLines, [Text.UTF8Encoding]::new($false))
+if ($extractCode -ne 0) { Write-Log "첨부 추출 실행 오류($extractCode) · 전달사항과 원본 첨부는 저장됨"; exit 2 }
+# 이번 첨부의 출력만 사용한다. 삭제된 첨부의 옛 추출본은 읽지 않는다.
+$mds = @($atts | ForEach-Object {
+  $p = Join-Path $work ($_.Name + '.md')
+  if (Test-Path -LiteralPath $p) { Get-Item -LiteralPath $p }
+})
+if ($mds.Count -eq 0) {
+  if ($extLines -match '(?m)^FAIL ') { Write-Log '첨부 변환 실패 · 처리 결과 파일 확인'; exit 2 }
+  Write-Log '첨부 내용 읽기 건너뜀 · 전달사항과 원본 첨부 저장 완료, 처리 결과 파일 확인'
+  exit 0
+}
 
 $prompt = @"
 알림장 첨부 요약을 써 줘. 첨부 텍스트는 스크립트로 이미 추출해 두었으니 아래 .md 파일만 Read로 읽어(원본 첨부를 다시 변환하지 마).
+읽을 추출 파일(이 목록만 사용):
+$($mds.FullName -join "`n")
+
 추출 결과:
 $extLines
 
@@ -94,7 +109,7 @@ $extLines
 출력 파일: "$summary"
 
 형식: 첫 줄 "$label 알림장 첨부 요약", 빈 줄, 이후 첨부마다 "첨부<n> <부서>, <문서 제목>" 한 줄로 시작해 1. 2. 숫자 제목으로 섹션을 나눈다. 첨부 여러 개를 이 파일 하나에 통합한다.
-규칙: 순수 텍스트(마크다운 기호·불릿·구분선 금지, 표는 산문으로), 연속 빈 줄 금지, 원문 톤의 합니다체, 원문의 30~50% 분량, URL·전화번호·공문번호 원형 보존, QR은 "(QR 코드 동봉)", 숫자·영문은 원래 표기. 요약에 넣는 날짜의 요일은 python으로 계산해 검증한다. 추출 결과가 WARN 또는 FAIL인 첨부는 요약 끝에 "이 첨부는 일부 내용(그림 속 글자 등)을 읽지 못했습니다." 한 문장을 붙인다.
+규칙: 순수 텍스트(마크다운 기호·불릿·구분선 금지, 표는 산문으로), 연속 빈 줄 금지, 원문 톤의 합니다체, 원문의 30~50% 분량, URL·전화번호·공문번호 원형 보존, QR은 "(QR 코드 동봉)", 숫자·영문은 원래 표기. 요약에 넣는 날짜의 요일은 python으로 계산해 검증한다. WARN인 첨부는 경고 내용을 반영하고 "이 첨부는 일부 내용(그림 속 글자 등)을 읽지 못했습니다."를 붙인다. SKIP 또는 FAIL인 첨부는 파일명과 읽지 못한 사유만 적고 내용을 추측하지 않는다.
 작성 후 연속 빈 줄 검사(grep -nE "^$" | awk)를 한다. 질문하지 말고 끝까지 처리한 뒤, 마지막에 요약 파일 경로와 첨부별 한 줄 요지만 출력해.
 "@
 

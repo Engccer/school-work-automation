@@ -10,6 +10,7 @@ $here = $PSScriptRoot
 $realScripts = Split-Path $here
 $realPython = (Get-Command python -CommandType Application | Select-Object -First 1).Source
 $fails = 0
+$global:extractMode = 'ok'
 function Assert($cond, $msg) {
   if ($cond) { Write-Host "ok   $msg" } else { Write-Host "FAIL $msg"; $script:fails++ }
 }
@@ -70,9 +71,16 @@ function python {
   if ($a[0] -like '*extract_attachments.py') {
     $work = $a[2]; New-Item -ItemType Directory -Force $work | Out-Null
     Get-ChildItem -LiteralPath $a[1] -Filter '첨부*' -File | ForEach-Object {
+      if ($global:extractMode -in 'skip', 'fail', 'crash') {
+        $state = if ($global:extractMode -eq 'skip') { 'SKIP' } else { 'FAIL' }
+        "$state $($_.Name) 테스트 미처리"
+        return
+      }
       "본문" | Set-Content -Encoding utf8NoBOM (Join-Path $work ($_.Name + '.md'))
       "WARN $($_.Name) -> x (2자) 본문 이미지 1개(이미지 속 글자는 추출 안 됨)"
     }
+    if ($global:extractMode -eq 'crash') { $global:LASTEXITCODE = 9; return }
+    if ($global:extractMode -eq 'partial') { "SKIP 첨부2_선택.hwp 테스트 도구 없음" }
     $global:LASTEXITCODE = 0; return
   }
   throw "예상 밖 python 호출: $a"
@@ -124,7 +132,7 @@ try {
   Assert ($code -eq 0) "요약 생성 → 0 (실제 $code)"
   Assert (Microsoft.PowerShell.Management\Test-Path -LiteralPath (Join-Path $folder '2020-02-27(목) 알림장 첨부 요약.txt')) '요약 파일이 같은 폴더에 생긴다'
   # 4. 프롬프트: WARN 이든 FAIL 이든 '읽지 못했습니다' 문장을 붙이라고 한다
-  Assert ("$global:prompt" -match 'WARN 또는 FAIL') '프롬프트 조건이 WARN 또는 FAIL'
+  Assert ("$global:prompt" -match 'SKIP 또는 FAIL') '읽지 못한 첨부는 사유만 전달한다'
   Assert ("$global:prompt" -match '(?m)^WARN 첨부1_') '프롬프트에 WARN 추출 결과 줄이 들어간다'
 } finally { Remove-Item -Recurse -Force $fx.Tmp }
 
@@ -167,6 +175,33 @@ try {
   Assert ($code -eq 0) "기본 출력 루트 → 0 (실제 $code)"
   Assert (Microsoft.PowerShell.Management\Test-Path -LiteralPath (Join-Path $folder '2020-03-02(월) 알림장 첨부 요약.txt')) "환경 변수가 없으면 DEFAULT_OUT($def)에 요약이 생긴다"
 } finally { Remove-Item -Recurse -Force $fx.Tmp }
+
+# 선택 도구가 없어도 전달사항·원본은 남고 실제 오류와 종료 코드를 구분한다.
+foreach ($extractCase in 'skip', 'fail', 'crash', 'partial') {
+  $global:fx = New-Fixture; $global:mode = 'real'; $global:prompt = $null
+  $global:extractMode = $extractCase
+  try {
+    Write-Rows $fx '2020-03-02' 'H03021.HWP'
+    # 옛 첨부의 추출본이 있어도 이번 첨부의 내용으로 읽지 않는다.
+    $staleDir = Join-Path $fx.Local '알림장-자동화\extract\2020-03-02'
+    New-Item -ItemType Directory -Force $staleDir | Out-Null
+    '옛 내용' | Set-Content -Encoding utf8NoBOM (Join-Path $staleDir '첨부9_옛파일.hwp.md')
+    $code = Invoke-Daily $fx '2020-03-02'
+    $expected = if ($extractCase -in 'fail', 'crash') { 2 } else { 0 }
+    Assert ($code -eq $expected) "$extractCase → 종료 코드 $expected (실제 $code)"
+    $files = @(Get-ChildItem -LiteralPath $fx.Proj -Recurse -File)
+    Assert (@($files | Where-Object Name -like '*전달사항.txt').Count -eq 1) "$extractCase 기본 전달사항 저장"
+    Assert (@($files | Where-Object Name -like '첨부*.HWP').Count -eq 1) "$extractCase 첨부 원본 보존"
+    $report = $files | Where-Object Name -like '*첨부 처리 결과.txt'
+    Assert ($null -ne $report) "$extractCase 첨부 처리 결과 파일 생성"
+    if ($extractCase -eq 'partial') {
+      Assert ("$global:prompt" -match 'SKIP 첨부2_선택.hwp') '부분 처리 시 미처리 목록 전달'
+      Assert ("$global:prompt" -notmatch '첨부9_옛파일') '이전 첨부의 추출본은 입력 목록에서 제외'
+    } else {
+      Assert ($null -eq $global:prompt) "$extractCase 요약 에이전트를 부르지 않음"
+    }
+  } finally { Remove-Item -Recurse -Force $fx.Tmp; $global:extractMode = 'ok' }
+}
 
 # 8. ALIM_AGENT_CMD 가 있으면 그 명령을 부르고 프롬프트를 마지막 인자로 붙인다(claude 는 부르지 않는다)
 function fakeagent { $global:agentArgs = @($args); $global:prompt = $null

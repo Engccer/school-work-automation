@@ -1,27 +1,29 @@
 r"""알림장 날짜 폴더의 첨부(첨부*)를 형식별로 텍스트(.md)로 뽑는다. 원본 폴더에는 아무것도 쓰지 않는다.
 
 사용(스킬 루트에서): python scripts/extract_attachments.py "<알림장 날짜 폴더>" "<출력 폴더>"
-출력: <출력 폴더>/<첨부 파일명>.md, 그리고 결과 요약 한 줄씩(OK/WARN/FAIL)을 표준출력으로.
+출력: <출력 폴더>/<첨부 파일명>.md, 결과 한 줄씩(OK/WARN/SKIP/FAIL).
+--check-tools: 한글 도구 연결 후보만 JSON으로 조회(변환·설치하지 않음).
 
 형식별 방법
-  HWPX  hwpx-automation(HWPX_AUTOMATION_DIR 또는 같은 스킬 폴더)의 hwpx_edit.py --to-md
-  HWP   hwpx-automation 의 convert/hwp2hwpx.bat(JDK 21)로 HWPX 변환 후 위와 같이
+  HWPX  ALIM_HWPX_CMD 또는 선택 설치한 hwpx-tomd
+  HWP   ALIM_HWP_CMD. 기존 hwpx-automation 설치는 호환 경로로 사용
   ODT   content.xml 의 문단·표를 직접 파싱
   PDF   pdftotext -layout -enc UTF-8 (PATH 의 pdftotext, 없으면 Git for Windows 동봉본)
   XLSX  openpyxl 로 시트별 셀 값
   기타(XLS 등)  추출 불가로 표시
 """
 import os
-import os
-import re
+import importlib
+import json
 import shutil
 import subprocess
 import sys
+import tempfile
 import zipfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
-# hwpx-automation 위치: 환경 변수, 없으면 이 스킬과 같은 스킬 폴더
+# 기존 설치를 위한 선택 호환 경로. 없으면 사용자 지정 도구나 독립 엔진을 쓴다.
 HWPX_DIR = Path(os.environ.get("HWPX_AUTOMATION_DIR") or Path(__file__).resolve().parents[2] / "hwpx-automation")
 HWPX_EDIT = HWPX_DIR / "hwpx_edit.py"
 HWP2HWPX = HWPX_DIR / "convert" / "hwp2hwpx.bat"
@@ -29,31 +31,101 @@ PDFTOTEXT_CANDIDATES = [shutil.which("pdftotext"), r"C:\Program Files\Git\mingw6
 
 
 def run(cmd):
-    r = subprocess.run(cmd, capture_output=True, env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+    r = subprocess.run(cmd, capture_output=True, timeout=120, stdin=subprocess.DEVNULL,
+                       env={**os.environ, "PYTHONIOENCODING": "utf-8"})
     dec = lambda b: b.decode("utf-8", "replace") if b else ""
     return r.returncode, dec(r.stdout), dec(r.stderr)
 
 
+class ToolUnavailable(Exception):
+    """선택 도구 미설치. 다른 첨부는 계속 처리한다."""
+
+
+def custom_command(ext):
+    key = "ALIM_" + ext.lstrip(".").upper() + "_CMD"
+    raw = os.environ.get(key)
+    if not raw:
+        return None
+    try:
+        args = json.loads(raw)
+    except ValueError as e:
+        raise ValueError(f"{key}: JSON 문자열 배열이 필요합니다") from e
+    if not isinstance(args, list) or not args or not all(isinstance(a, str) and a for a in args):
+        raise ValueError(f"{key}: 비어 있지 않은 명령·인자 배열이 필요합니다")
+    if not all(any(token in a for a in args[1:]) for token in ("{input}", "{output}")):
+        raise ValueError(f"{key}: 인자에 {{input}}과 {{output}}이 필요합니다")
+    if Path(args[0]).suffix.lower() in (".cmd", ".bat"):
+        raise ValueError(f"{key}: 실행 파일을 지정하세요(.cmd/.bat는 지원하지 않음)")
+    if not shutil.which(args[0]):
+        raise ValueError(f"{key}: 실행 파일을 찾을 수 없습니다: {args[0]}")
+    return args
+
+
+def hangul_tool(ext):
+    args = custom_command(ext)
+    if args:
+        return "custom", args
+    if ext == ".hwpx":
+        try:
+            importlib.import_module("hwpx_tomd")
+            return "hwpx-tomd", None
+        except ImportError:
+            if HWPX_EDIT.is_file():
+                return "hwpx-automation", None
+        raise ToolUnavailable("HWPX 읽기 도구 미설정(예: hwpx-tomd 또는 ALIM_HWPX_CMD)")
+    if HWP2HWPX.is_file():
+        hangul_tool(".hwpx")
+        return "hwpx-automation", None
+    raise ToolUnavailable("HWP 읽기 도구 미설정(ALIM_HWP_CMD 또는 HWP 변환 도구). hwpx-tomd만으로는 HWP를 읽을 수 없음")
+
+
+def check_tools():
+    result = {}
+    for ext in (".hwpx", ".hwp"):
+        try:
+            name, _ = hangul_tool(ext)
+            result[ext[1:]] = {"state": "candidate", "tool": name}
+        except ToolUnavailable as e:
+            result[ext[1:]] = {"state": "missing", "detail": str(e)}
+        except Exception as e:
+            result[ext[1:]] = {"state": "invalid", "detail": str(e)}
+    print(json.dumps(result, ensure_ascii=False))
+
+
+def custom_to_md(args, src, out):
+    args = [a.replace("{input}", str(src.resolve())).replace("{output}", str(out.resolve())) for a in args]
+    code, so, se = run(args)
+    if code != 0 or not out.is_file():
+        raise RuntimeError(f"사용자 지정 도구 실패(종료 코드 {code}): " + (se or so).strip()[-300:])
+    return "사용자 지정 도구: 그림 속 글자·누락 여부 별도 확인" + (" / " + se.strip()[-300:] if se.strip() else "")
+
+
 def hwpx_to_md(src: Path, out: Path):
+    name, args = hangul_tool(".hwpx")
+    if name == "custom":
+        return custom_to_md(args, src, out)
+    if name == "hwpx-tomd":
+        result = importlib.import_module("hwpx_tomd").convert(str(src))
+        out.write_text(result.markdown, encoding="utf-8")
+        return " / ".join(result.warnings)
     code, so, se = run([sys.executable, str(HWPX_EDIT), str(src), "--to-md", "-o", str(out)])
     if code != 0 or not out.exists():
         raise RuntimeError((se or so).strip()[-300:])
-    m = re.search(r"이미지 (\d+)개", se + so)
-    return f"본문 이미지 {m.group(1)}개(이미지 속 글자는 추출 안 됨)" if m else ""
+    return se.strip() or ("본문 그림 확인 필요" if "이미지" in so else "")
 
 
 def hwp_to_md(src: Path, out: Path, work: Path):
-    tmp_hwp = work / "_in.hwp"
-    tmp_hwpx = work / "_in.hwpx"
-    try:
+    name, args = hangul_tool(".hwp")
+    if name == "custom":
+        return custom_to_md(args, src, out)
+    with tempfile.TemporaryDirectory(prefix="alim_hwp_") as tmp:
+        tmp_hwp = Path(tmp) / "input.hwp"
+        tmp_hwpx = Path(tmp) / "output.hwpx"
         shutil.copyfile(src, tmp_hwp)
         code, so, se = run(["cmd", "/c", str(HWP2HWPX), str(tmp_hwp), str(tmp_hwpx)])
-        if not tmp_hwpx.exists():
+        if code != 0 or not tmp_hwpx.exists():
             raise RuntimeError("HWP→HWPX 변환 실패: " + (se or so).strip()[-300:])
         return hwpx_to_md(tmp_hwpx, out)
-    finally:
-        tmp_hwp.unlink(missing_ok=True)
-        tmp_hwpx.unlink(missing_ok=True)
 
 
 def odt_to_md(src: Path, out: Path):
@@ -102,7 +174,7 @@ def odt_to_md(src: Path, out: Path):
 def pdf_to_md(src: Path, out: Path):
     exe = next((p for p in PDFTOTEXT_CANDIDATES if p and Path(p).exists()), None)
     if not exe:
-        raise RuntimeError("pdftotext 없음")
+        raise ToolUnavailable("PDF 읽기 도구 미설정(pdftotext)")
     code, so, se = run([exe, "-layout", "-enc", "UTF-8", str(src), str(out)])
     if code != 0 or not out.exists():
         raise RuntimeError(se.strip()[-300:])
@@ -112,7 +184,10 @@ def pdf_to_md(src: Path, out: Path):
 
 
 def xlsx_to_md(src: Path, out: Path):
-    import openpyxl
+    try:
+        import openpyxl
+    except ImportError as e:
+        raise ToolUnavailable("XLSX 읽기 도구 미설정(openpyxl)") from e
     wb = openpyxl.load_workbook(src, data_only=True, read_only=True)
     lines = []
     for ws in wb.worksheets:
@@ -128,9 +203,14 @@ def xlsx_to_md(src: Path, out: Path):
 
 
 def main():
+    if sys.argv[1:] == ["--check-tools"]:
+        check_tools()
+        return
     if len(sys.argv) != 3:
         sys.exit('사용: python scripts/extract_attachments.py "<알림장 날짜 폴더>" "<출력 폴더>"')
-    folder, outdir = Path(sys.argv[1]), Path(sys.argv[2])
+    folder, outdir = Path(sys.argv[1]).resolve(), Path(sys.argv[2]).resolve()
+    if not folder.is_dir():
+        sys.exit("첨부 폴더가 없습니다")
     outdir.mkdir(parents=True, exist_ok=True)
     files = sorted(p for p in folder.glob("첨부*") if p.is_file())
     if not files:
@@ -152,12 +232,20 @@ def main():
             elif ext == ".xlsx":
                 note = xlsx_to_md(src, out)
             else:
-                print(f"FAIL {src.name} 지원하지 않는 형식({ext})")
+                print(f"SKIP {src.name} 자동 추출 미지원({ext}), 원본 보관")
                 continue
-            size = len(out.read_text(encoding="utf-8", errors="replace"))
+            content = out.read_text(encoding="utf-8-sig")
+            if not content.strip():
+                raise RuntimeError("추출된 본문이 비어 있음")
+            size = len(content)
+            note = " ".join(note.splitlines())
             print(f"{'WARN' if note else 'OK'} {src.name} -> {out} ({size}자){' ' + note if note else ''}")
+        except ToolUnavailable as e:
+            out.unlink(missing_ok=True)
+            print(f"SKIP {src.name} {e}, 원본 보관")
         except Exception as e:
-            print(f"FAIL {src.name} {e}")
+            out.unlink(missing_ok=True)
+            print(f"FAIL {src.name} {' '.join(str(e).splitlines())}")
 
 
 if __name__ == "__main__":

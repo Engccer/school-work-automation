@@ -99,31 +99,36 @@ foreach ($s in $targets) {
       else { Report '없음' '쿨메신저 클라이언트 메시지 DB' "$memo 없음. 쿨메신저(Gentoo)를 설치하고 한 번 로그인한다" }
     }
     'alimjang-automation' {
-      CheckModules @('dbfread', 'openpyxl') ''
+      CheckModules @('dbfread') ''
+      CheckModules @('openpyxl') 'XLSX 첨부 내용 읽기에만 필요'
       # 평일 자동 정리(run_daily.ps1)가 부르는 에이전트 CLI. 수동 사용에는 필요 없다
       $agent = if ($env:ALIM_AGENT_CMD) { @($env:ALIM_AGENT_CMD -split '\s+' | Where-Object { $_ })[0] } else { 'claude' }
       if (Get-Command $agent -ErrorAction SilentlyContinue) { Report 'OK' "에이전트 CLI $agent (자동 정리용)" }
       else { Report '확인' "에이전트 CLI $agent" '평일 자동 정리에만 필요. 다른 에이전트는 ALIM_AGENT_CMD 로 지정' }
-      $hwpx = if ($env:HWPX_AUTOMATION_DIR) { $env:HWPX_AUTOMATION_DIR } else { Join-Path $skillsRoot 'hwpx-automation' }
-      if (Test-Path -LiteralPath (Join-Path $hwpx 'hwpx_edit.py')) { Report 'OK' "hwpx-automation 스킬 ($hwpx)" }
-      else { Report '없음' 'hwpx-automation 스킬' 'npx skills add Engccer/hwpx-automation -g (또는 HWPX_AUTOMATION_DIR)' }
-      if (PyModule 'hwpx_tomd') { Report 'OK' 'Python 패키지 hwpx-tomd' } else { Report '없음' 'Python 패키지 hwpx-tomd' 'pip install hwpx-tomd' }
-      $java = $null
-      if ($env:JAVA_HOME -and (Test-Path -LiteralPath (Join-Path $env:JAVA_HOME 'bin\java.exe'))) { $java = Join-Path $env:JAVA_HOME 'bin\java.exe' }
-      if (-not $java -and $env:ProgramFiles) {
-        $java = Get-ChildItem (Join-Path $env:ProgramFiles 'Eclipse Adoptium') -Directory -Filter 'jdk-21*' -ErrorAction SilentlyContinue |
-          ForEach-Object { Join-Path $_.FullName 'bin\java.exe' } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-      }
-      if (-not $java) { $java = (Get-Command java -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source }
-      $major = if ($java) { if ("$(& $java -version 2>&1 | Select-Object -First 1)" -match 'version "(\d+)') { [int]$Matches[1] } else { 0 } } else { 0 }
-      if ($major -ge 21) { Report 'OK' "Java $major ($java)" }
-      else { Report '없음' 'JDK 21' "첨부 HWP 변환에 필요$(if ($java) { " (찾은 것: Java $major)" }). winget install EclipseAdoptium.Temurin.21.JDK" }
+      # 권장 도구의 연결 후보만 확인한다. 실제 변환 가능 여부는 대표 첨부로 검증한다.
+      $extractor = Join-Path $skillsRoot 'alimjang-automation\scripts\extract_attachments.py'
+      if ($pyExe -and (Test-Path -LiteralPath $extractor)) {
+        try {
+          $raw = & $pyExe $extractor --check-tools 2>$null
+          if ($LASTEXITCODE -ne 0) { throw '도구 점검 실행 실패' }
+          $caps = ($raw -join "`n") | ConvertFrom-Json -ErrorAction Stop
+          foreach ($fmt in 'hwpx', 'hwp') {
+            $cap = $caps.$fmt
+            if (-not $cap.state) { throw '도구 점검 결과 없음' }
+            if ($cap.state -eq 'candidate') {
+              Report '확인' "$($fmt.ToUpper()) 첨부 읽기: 연결 후보 $($cap.tool)" '예약 자동화에 쓰려면 대표 첨부로 변환 결과를 확인한다'
+            } else {
+              Report '확인' "$($fmt.ToUpper()) 첨부 읽기: 미설정 또는 설정 확인 필요" "$($cap.detail). 기본 조회·첨부 저장에는 필요 없음"
+            }
+          }
+        } catch { Report '확인' '한글 첨부 도구' '자동 연결 점검 불가. 알림장 references/첨부-도구.md의 설정을 확인한다' }
+      } else { Report '확인' '한글 첨부 도구' '기본 조회·첨부 저장에는 필요 없음. 사용할 형식의 읽기 도구만 선택한다' }
       $pdf = (Get-Command pdftotext -ErrorAction SilentlyContinue | Select-Object -First 1).Source
       if (-not $pdf -and $env:ProgramFiles) {
         $g = Join-Path $env:ProgramFiles 'Git\mingw64\bin\pdftotext.exe'
         if (Test-Path -LiteralPath $g) { $pdf = $g }
       }
-      if ($pdf) { Report 'OK' "pdftotext ($pdf)" } else { Report '없음' 'pdftotext' '첨부 PDF 추출에 필요. Git for Windows 또는 poppler 설치' }
+      if ($pdf) { Report 'OK' "pdftotext ($pdf)" } else { Report '확인' 'pdftotext' '자동 PDF 첨부 추출에만 필요. Git for Windows 또는 poppler 설치' }
       if (Test-Path -LiteralPath '\\관리자\$ALIM$\ALIM.DBF') { Report 'OK' '알림장 서버 공유 폴더' }
       else { Report '확인' '알림장 서버 공유 폴더' '학교 내부망에서 서버 PC가 켜져 있을 때만 보인다. 교내에서 다시 확인' }
     }
