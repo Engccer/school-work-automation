@@ -4,7 +4,7 @@ license: MIT
 description: >-
   서울 업무포털을 거쳐 K-에듀파인(klef.sen.go.kr)의 공문 업무를 자동화한다. 목록은 브라우저 자동화(기본 Playwright)로, 결재·기안 문서 창(WXSClient)은 PowerShell MSHTML 브리지와 실제 마우스 클릭으로 다룬다. 다음 요청에 사용한다. (1) 결재대기 공문 확인·판독, 접수 공문 본문·첨부 PC저장, 과제카드 지정·문서처리(접수) (2) 새 공문 기안·결재올림(상신): 내부결재, 대외시행 자동발송, 겸직허가 신청 등. "공문 올려 줘", "기안해 줘", "결재 올려 줘" (3) 문서등록대장에서 선례·발송 정보 찾기 (4) 기록물관리 점검 등에 따른 완료 문서 대국민공개여부(공개구분) 수정 (5) HwpODTpatch 보안 프로그램 설치 alert 반복, K-에듀파인 사용자지원서비스 질의. 교데통 자료 제출(전자결재 연계기안 포함)은 kyodetong-submit, 나이스 복무·출장 상신은 neis-automation이 맡는다. K-Edufine, official document, e-approval, drafting, document registry, WXSClient, MSHTML.
 metadata:
-  version: "5.4.0"
+  version: "5.6.0"
 ---
 
 # K-에듀파인 업무 자동화 (업무포털 → K-에듀파인 → 결재대기·기안)
@@ -113,6 +113,7 @@ metadata:
   있다. 스크린샷 타임아웃·흰 화면이 반복되면 그 탭을 탭 닫기로 닫고, 포털 탭에서
   [K-에듀파인]을 다시 클릭해 새 탭으로 재진입한다.
 - `[HwpODTpatch]` alert 무한 루프와 사용자지원서비스 질의 등록 → [references/한ODT-설치루프.md](references/한ODT-설치루프.md)
+- **한글 ODT가 없는 PC(한컴독스만 설치한 개인 PC 등)에서는 K-에듀파인 조회를 시도하지 않는다.** CDP 로컬 접근 허용(`references/공문검색-수집.md`)으로 다른 보안 프로그램이 모두 `설치됨`이 되어도 이 alert로 진입이 막히므로 학교 PC 작업이나 행정실 문의로 돌린다. → 사례
 
 ### 4단계: 결재대기 목록 조회
 

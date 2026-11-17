@@ -52,6 +52,20 @@ function Get-CMTreeItemText($Tree, $Item, $Buf) {
     $s
 }
 
+function Get-CMTreeItemImage($Tree, $Item, $Buf) {
+    <# 항목의 아이콘 번호(iImage, 오프셋 24). 사람 항목은 접속 상태에 따라 번호가 바뀐다.
+       조직도 글자에는 자리비움 같은 상태가 나오지 않아 이것이 유일한 단서다. #>
+    $b = New-Object byte[] 40
+    [BitConverter]::GetBytes([uint32]0x0002).CopyTo($b, 0)                      # TVIF_IMAGE
+    [BitConverter]::GetBytes([int32]$Item).CopyTo($b, 4)
+    $w = [UIntPtr]::Zero
+    [void][CM]::WriteProcessMemory($Buf.Proc, $Buf.Addr, $b, [UIntPtr]40, [ref]$w)
+    [void][CM]::Msg($Tree, $TVM_GETITEMW, [IntPtr]::Zero, $Buf.Addr)
+    $out = New-Object byte[] 40; $r = [UIntPtr]::Zero
+    [void][CM]::ReadProcessMemory($Buf.Proc, $Buf.Addr, $out, [UIntPtr]40, [ref]$r)
+    [BitConverter]::ToInt32($out, 24)
+}
+
 function Get-CMTreeItemRect($Tree, $Item, $Buf) {
     <# 트리 클라이언트 좌표. 화면 밖 항목은 음수가 나오므로 ENSUREVISIBLE 뒤에 다시 읽는다. #>
     $b = New-Object byte[] 16

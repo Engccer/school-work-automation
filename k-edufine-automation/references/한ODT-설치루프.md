@@ -2,7 +2,7 @@
 
 SKILL.md 3단계(install.html)에서 넘어온다.
 
-## 한글 2024 PC의 HwpODTpatch 무한 루프
+## 한컴독스 PC의 HwpODTpatch 무한 루프
 
 `main.do`가 `필수 보안 프로그램이 설치되지 않았습니다.[HwpODTpatch]` alert → install.html →
 [메인페이지로 이동] → 같은 alert로 끝없이 돈다. 원인 사슬(로그로 확정):
@@ -10,12 +10,21 @@ SKILL.md 3단계(install.html)에서 넘어온다.
 1. `install_config.js`의 자동설치 목록(`objectInstList`)에는 **패치(HwpODTpatch)만** 있고,
    본체 한ODT(`/thirdParty/handy/install/HwpODT.exe`, 10.2.0.805)는 "(수동설치)"다.
 2. 패치(`HwpODTCtrl_Patch.exe`)는 본체가 없으면 "이 업데이트를 설치하려면 한ODT이(가) 필요합니다"로 끝난다.
-3. 본체 설치 프로그램(Inno Setup 5.5.5)의 `InitializeSetup`이 **한글 2024(레지스트리 `HNC\Hwp\13.0`)를
-   인식하지 못해** `isInstalled is False` → "한컴오피스 또는 한글이 설치되지 않아…" → 중단(종료 코드 1).
+3. 본체 설치 프로그램(Inno Setup 5.5.5)의 `InitializeSetup`이 설치된 한컴독스(한컴오피스 2024)를
+   **정식 한글로 인정하지 않아** `isInstalled is False` → "한컴오피스 또는 한글이 설치되지 않아…" → 중단(종료 코드 1).
    원인 확인은 `/LOG="<경로>"` 옵션으로 실행해 Inno 로그를 보면 된다.
 
-- 따라서 한글 2024만 깔린 PC에서는 사용자 쪽에서 풀 방법이 없다(레지스트리 위장 등 우회 금지).
-  K-에듀파인 상담(02-1396)에 한ODT의 한글 2024 호환판을 요청할 사안이다. → 사례
+- **판정 기준은 한글 버전이 아니라 제품(라이선스) 종류로 추정한다(설치 실측 전).** 본체에는 자체 한글 엔진
+  (`app\HOffice2018\Bin\HwpApp.dll` 등)이 들어 있어 설치된 한글을 실행용으로 쓰지 않고,
+  임시 파일 `tmp\HncProductUtil.dll`(내보내기 `GetInstalledProductType`, 가져오는 DLL이
+  KERNEL32·MSVCR120뿐이라 레지스트리를 직접 읽지 않음)로 설치된 제품을 판별한다. 판별 입력은
+  `Install Information\Hwp130`의 `ProductID`로 보이나 함수 호출 시험은 실패해 확인하지 못했다.
+  한컴독스(구독형)가 여기서 떨어진다는 것은 아래 공식 답변과 맞는다. 그래서 한컴독스 버전을 낮추는
+  것은 해결책이 아니고, 본체 없이 패치만 까는 길은 2번에서 막힌다. 교육청 라이선스 한글은 버전이
+  낮아도 될 것으로 보며(ODT가 자체 엔진을 씀), 실제 설치로 확인되면 이 문장을 확정한다.
+  내용 확인은 innoextract(`-e -d <빈 폴더>`)로 풀어서 본다.
+- 따라서 한컴독스만 깔린 PC에서는 사용자 쪽에서 풀 방법이 없다(레지스트리 위장 등 우회 금지).
+  해결은 교육청 라이선스 정식 한글 설치다(아래 공식 답변). → 사례
 - alert가 떠 있으면 `Script injection timed out`으로 탭 전체가 먹통이 된다. 판독은
   `scripts/capture.ps1 -TitleLike "K-에듀파인"`으로 창을 캡처해서 하고, 판독 후 PNG(`SAVED=` 경로)를 지운다.
 - **신고 창구는 나이스광장이 아니라 K-에듀파인 사용자지원서비스**(help.klef.go.kr, 업무포털

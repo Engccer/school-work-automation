@@ -82,7 +82,7 @@ if (-not $Send) {
     return
 }
 
-$send = Find-CMControl -Parent $compose -Class 'Button' -TextLike '보내기*'
-[void][CM]::Msg($send, 0x00F5, [IntPtr]0, [IntPtr]0)
+$sendBtn = Find-CMControl -Parent $compose -Class 'Button' -TextLike '보내기*'
+[void][CM]::Msg($sendBtn, 0x00F5, [IntPtr]0, [IntPtr]0)
 Start-Sleep -Seconds 4
 Write-Host (Get-CMSendNotice -Compose $compose -Name $short)

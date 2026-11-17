@@ -2,9 +2,9 @@
 name: coolmessenger-automation
 license: MIT
 description: >-
-  교내 메신저 쿨메신저(CoolMessenger)로 이미 주고받은 메시지를 다룬다. 로컬 SQLite DB를 읽어 받은·보낸 메시지를 상대·시작 일시·문구로 조회하고, 회신 내용을 정리하며, 받은 메시지의 첨부파일을 내려받고, 회신 작성 창과 새 메시지 작성 창을 채워 보낸다(보내기는 사용자가 발송에 동의했을 때). 다음 요청에 사용한다. "○○ 선생님과 주고받은 메시지 찾아 줘", "선생님들 답장 왔는지 봐 줘", "회신 취합해 줘", 대상자 명단과 대조한 회신자·미회신자 구분, "첨부파일 다 받아서 정리해 줘", "○○ 선생님이 보낸 파일 받아 줘", 받은 메시지의 첨부파일 내려받기, 받은·보낸 메시지 검색·내보내기, 지정한 사람의 최근 메시지에 회신 보내기 준비, 여러 사람에게 같은 안내문을 한 통씩 따로 보내기(개별 발송, 사람마다 다른 파일 첨부), 이전에 보낸 메시지의 받는사람에게 새 메시지 보내기([전체 회신]으로 받는사람 재사용). 보낼 문안을 새로 쓰는 일은 이 스킬의 범위 밖이다. 교내 조직도를 내선번호·소속 포함 CSV로 저장해 줘, 조직도 내보내기, 내선번호 명단 만들어 줘. CoolMessenger, message search, read replies, reply tracking, download received attachments, send individually, message database, org chart export, extension list.
+  교내 메신저 쿨메신저(CoolMessenger)로 이미 주고받은 메시지를 다룬다. 로컬 SQLite DB를 읽어 받은·보낸 메시지를 상대·시작 일시·문구로 조회하고, 회신 내용을 정리하며, 받은 메시지의 첨부파일을 내려받고, 회신 작성 창과 새 메시지 작성 창을 채워 보낸다(보내기는 사용자가 발송에 동의했을 때). 다음 요청에 사용한다. "○○ 선생님과 주고받은 메시지 찾아 줘", "선생님들 답장 왔는지 봐 줘", "회신 취합해 줘", 대상자 명단과 대조한 회신자·미회신자 구분, "첨부파일 다 받아서 정리해 줘", "○○ 선생님이 보낸 파일 받아 줘", 받은 메시지의 첨부파일 내려받기, 받은·보낸 메시지 검색·내보내기, 지정한 사람의 최근 메시지에 회신 보내기 준비, 여러 사람에게 같은 안내문을 한 통씩 따로 보내기(개별 발송, 사람마다 다른 파일 첨부), 이전에 보낸 메시지의 받는사람에게 새 메시지 보내기([전체 회신]으로 받는사람 재사용), 받은 메시지를 다른 선생님들도 함께 받았는지 확인, "○○ 선생님 지금 자리비움이야?" 같은 접속 상태 확인. 보낼 문안을 새로 쓰는 일은 이 스킬의 범위 밖이다. 교내 조직도를 내선번호·소속 포함 CSV로 저장해 줘, 조직도 내보내기, 내선번호 명단 만들어 줘. CoolMessenger, message search, read replies, reply tracking, download received attachments, send individually, message database, org chart export, extension list.
 metadata:
-  version: "1.7.0"
+  version: "1.10.0"
 ---
 
 # 쿨메신저 자동화
@@ -54,11 +54,19 @@ Windows PowerShell 5.1로 띄우는 임시 `.ps1`에 한글 경로나 문구가 
 %LOCALAPPDATA%\CoolMessenger\Memo\<사용자명>.udb    (+ -wal, -shm)
 ```
 
+이 경로는 **본인 이름의 `.udb`가 있는 PC(학교 PC)에서만 유효하다.** 읽기 전에 파일명이 본인 이름인지와
+최종 수정 시각을 먼저 확인한다. 학교 밖 개인 PC에는 다른 사용자 이름의 옛 DB만 남아 있을 수 있다. → 사례
+
 | 테이블 | 내용 |
 |---|---|
 | `tbl_recv` | 받은 메시지 · `Sender` `Title` `MessageText` `ReceiveDate` `FilePath` `IsUnRead` |
 | `tbl_send` | 보낸 메시지 · `Receiver` `Title` `MessageText` `SendDate` `FilePath` |
 | `tbl_member` | 조직 구성원 |
+
+`MessageText`는 평문 사본이고, 받는 사람이 보는 서식 본문은 `MessageBody`에 있다. `{COMP}` 뒤가 base64이고,
+풀면 zlib 압축이며, 압축을 풀면 **UTF-16LE** HTML이 나온다
+(`zlib.decompress(base64.b64decode(b[6:])).decode('utf-16-le')`). 빈 줄·줄바꿈처럼 화면에 어떻게 보이는지는 이쪽으로 판단한다.
+평문 사본은 줄바꿈이 늘어나 있다(빈 줄 하나가 `\r\n\r\n\r\n`).
 
 ```bash
 python scripts/cm_export.py --since 2026-09-21 --contains 체크리스트 --out 회신.csv
@@ -77,6 +85,10 @@ python scripts/cm_export.py --sent --since 2026-09-01 --format json
   첨부가 여러 개면 `폴더|파일명|플래그` 세 칸이 건수만큼 반복된다.
   폴더는 **보낸 사람 PC의 폴더**라 내 컴퓨터에는 그런 파일이 없다.
 - **화면 목록보다 DB가 완전하다.** 관리함 목록에서 사라진 메시지도 DB에는 남는다.
+- **받은 메시지를 누가 같이 받았는지도 DB에 있다.** `tbl_recv.ReferenceList`가 `|건수|키|키|…|` 꼴의
+  수신자 키 목록이고, 키는 `tbl_member.K_MemberID`다. "이 안내를 ○○ 선생님들께 따로 전달해야 하나?"는
+  대상자 키(내가 그들에게 보낸 `tbl_send.ReceiverKey`에서 얻는다)가 이 목록에 다 들었는지로 판정한다.
+  → 사례
 
 ### 회신만 골라내기
 
@@ -194,6 +206,25 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/cm_send_new.ps1 `
   실제로는 들어가 있다(캡처와 `tbl_send.Title`로 확인). 비었다고 다시 넣지 않는다.
 - 첨부가 붙으면 창 하단에 `파일명 (NN KB)` 라벨이 생긴다. 스크립트는 파일명으로 대조한다.
 - 검색란 붙여넣기가 화면에 반영되지 않으면 검색 성공으로 간주하지 말고 조직도를 이용한다.
+- **제목 없이 보내려면 `-TitleFile`을 빼거나 빈 파일을 준다.** 스크립트가 제목 칸을 건드리지 않고,
+  쿨메신저가 본문 앞 약 30자를 제목으로 채운다. 빈 문자열을 클립보드로 붙여 넣는 방식은 쓰지 않는다
+  (클립보드에 남은 다른 글이 제목에 들어갈 수 있다).
+- **본문은 HTML로 붙여 넣어 URL을 링크로 건다(기본).** 에디터는 손으로 URL 뒤에 스페이스·엔터를 칠 때만 자동 링크를 걸어서,
+  평문으로 붙이면 URL이 글자로만 남아 받는 쪽에서 눌리지 않는다(2026-11-17 발송한 안내가 그랬다).
+  스크립트는 본문을 손으로 친 메시지와 같은 HTML(굴림 2호 `<font>` 틀, 줄마다 `<div style="line-height: 1.35;">`,
+  빈 줄 `<div><br></div>`, URL은 `<a href="URL" style="cursor: pointer;">URL</a>`)로 바꿔 클립보드에
+  `HTML Format`(CF_HTML)과 평문을 함께 넣고 붙인다. URL 끝의 `.,;:!?)]」』`는 링크에서 뺀다.
+  `<font>` 틀을 빼면 붙인 글이 Times New Roman 12pt가 된다. 출력의 `본문: HTML 붙여넣기(링크 N개)`로 링크 수를 확인하고,
+  발송 뒤에는 `MessageBody`의 `<a href` 개수로 검증한다. 예전 방식이 필요하면 `-PlainText`. → 사례
+- **본문의 빈 줄은 받는 쪽에 그대로 한 줄로 보인다. 손대지 않는다.** `tbl_send.MessageText`에는 빈 줄 하나가
+  `\r\n\r\n\r\n`(빈 줄 둘)로 남지만, 이건 쿨메신저가 HTML을 평문으로 바꿔 둔 사본의 특성이다. 실제로 보내지는
+  HTML(`MessageBody`)은 줄마다 `<div>…</div>`, 빈 줄은 `<div><br></div>` 하나로 원문과 같다. 손으로 친 메시지도
+  `MessageText`에는 똑같이 남는다. 그러니 원문 빈 줄을 줄이거나 사용자에게 "늘어났다"고 알리지 않는다.
+  화면 표시를 확인할 일이 있으면 `MessageText`가 아니라 `MessageBody`를 풀어서 본다(1절). → 사례
+- **Windows가 잠겨 있으면 조직도 클릭이 `클릭 좌표가 조직도 위가 아닙니다`로 실패한다.** 원인은 좌표가 아니라
+  맨 앞의 잠금 화면(`Windows 기본 잠금 화면`)이거나 맨 앞 창이 아예 없는 상태(`GetForegroundWindow`=0)다.
+  이때 `PrintWindow` 캡처도 빈 그림(수백 바이트)이 나온다. 스크립트는 시작할 때 `Test-CMDesktopLocked`로 검사해
+  멈추므로, 사용자에게 잠금 해제를 부탁하고 다시 실행한다. 메인 창이 최소화돼 있으면 스크립트가 먼저 복원한다. → 사례
 
 ### 받은 메시지에 회신 작성
 
@@ -256,6 +287,21 @@ python scripts/cm_export.py --sent --since "2026-09-22 12:00" --out sent.csv
 번호 표기도 제각각이라 `3.예`(공백 없음), `6번 전체 인원 수`(구분자 대신 '번'),
 `전체인원 수`(띄어쓰기 다름)를 모두 받아야 한다. 다만 번호 뒤에 아무 표시가 없으면
 `2026년` 같은 숫자를 문항으로 오인하므로 `[.,)]`나 '번'은 반드시 요구한다.
+
+## 3-1. 조직도에서 접속 상태 확인 · 자리비움인지 보기
+
+조직도 글자(`이름(학년-반) 내선 담당`)에는 접속 상태가 나오지 않는다. 단서는 트리 항목의
+**아이콘 번호(`TVITEMW.iImage`, 32비트 오프셋 24)**뿐이다.
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/cm_presence.ps1 -Name 홍길동 -Self 본인이름
+```
+
+- 본인은 지금 PC를 쓰고 있으니 접속 중이 확실하다. 그래서 **본인 항목과 번호가 같으면 '접속 중'**으로 본다.
+- 번호가 다르면 '다른 상태'까지만 말한다. 실측 분포는 사람 항목 기준 0·7·8·11(그룹 노드는 1·3)이었고
+  11이 본인과 같은 접속 중이었다. 0·7·8 가운데 어느 것이 오프라인·자리비움·다른 용무인지는 **아직 확정하지 못했다.**
+  상태를 아는 사람(예: 자리비움을 직접 걸어 둔 본인)으로 대조해 확정되면 이 절에 표로 적는다.
+- 결과를 전할 때는 "아이콘으로 판단한 추정"임을 밝힌다. → 사례
 
 ## 4. 조직도 내보내기 · 소속·내선번호 포함 CSV
 
@@ -375,7 +421,8 @@ foreach ($t in [CM]::Tops([uint32](Get-CMPid))) {
 |---|---|
 | `scripts/cm_export.py` | DB에서 메시지 내보내기(CSV/JSON) · 읽기 전용 |
 | `scripts/cm_lib.ps1` | 창·목록·대화상자 조작 공용 함수 |
-| `scripts/cm_tree.ps1` | 조직도 트리 열거·좌표·더블클릭 |
+| `scripts/cm_tree.ps1` | 조직도 트리 열거·좌표·아이콘 번호·더블클릭 |
+| `scripts/cm_presence.ps1` | 조직도 아이콘 번호로 접속 상태를 본인과 비교(읽기 전용) |
 | `scripts/cm_send_new.ps1` | 조직도에서 한 사람에게 새 메시지(제목·본문·첨부, `-Send`로 발송까지) |
 | `scripts/cm_save_attachments.ps1` | 받은 메시지 첨부 내려받기 |
 | `scripts/cm_reply.ps1` | 회신 창 열고 본문 채우기(`-Send`로 발송까지) |

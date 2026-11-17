@@ -28,7 +28,32 @@ DevTools 사용을 차단했습니다"가 뜨면 확정이다. 탭·크롬 재�
 쓰는 도구: `browser_navigate`·`browser_run_code_unsafe`·`browser_evaluate`·`browser_take_screenshot`·
 `browser_tabs`·`browser_click`·`browser_handle_dialog`·`browser_file_upload`·`browser_snapshot`·`browser_find`.
 
-1. **로그인**: `browser_navigate` → 확인한 교육청 업무포털 로그인 주소(서울 예: `https://sen.eduptl.kr/bpm_lgn_lg00_001.do`). 공지 팝업은 그대로 두고
+1. **로그인 · 첫 시도부터 아래 한 호출로 한다.** 새 Playwright 크롬은 업무포털이 PC의 인증서 프로그램
+   (KCase Agent, `127.0.0.1`)에 붙는 것을 막는다. 이때 "인증서 로그인용 프로그램 설치가 필요합니다" 알림이
+   뜨고, 사용자가 [확인]을 눌러도 인증서 창은 뜨지 않는다. KCase가 멀쩡히 돌고 있어도 똑같이 뜨므로
+   **이 알림을 재설치 신호로 읽지 않는다**(먼저 `Get-Process KCaseAgent`로 실행 여부를 본다).
+   CDP로 세 권한 `localNetworkAccess`·`localNetwork`·`loopbackNetwork`를 **모두** 주고 시작하면 알림 없이
+   인증서 창이 뜬다. 하나만 주면 크롬 버전에 따라 막힌 채 남는다(`127.0.0.1`은 loopback이다). → 사례
+   ```js
+   async (page) => {
+     const cdp = await page.context().newCDPSession(page);
+     // 서울 예. 소속 교육청의 업무포털·인증·나이스·K-에듀파인 주소로 바꾼다
+     for (const o of ['https://sen.eduptl.kr','https://idp1-sen.neis.go.kr:9443','https://sen.neis.go.kr','https://klef.sen.go.kr'])
+       for (const p of ['localNetworkAccess','localNetwork','loopbackNetwork'])
+         await cdp.send('Browser.grantPermissions', {origin: o, permissions: [p]}).catch(() => {});
+     await page.goto('https://sen.eduptl.kr/bpm_lgn_lg00_001.do');
+     for (let i = 0; i < 20; i++) {
+       const d = await page.evaluate(() => { const o = document.querySelector('.isloading-overlay'); return o ? getComputedStyle(o).display : 'none'; });
+       if (d === 'none') break; await page.waitForTimeout(1500);
+     }
+     let alertMsg = null; page.once('dialog', async x => { alertMsg = x.message(); await x.accept(); });
+     await page.locator('#btnLgn').click({timeout: 10000});
+     await page.waitForTimeout(4000);
+     return {alertMsg};   // null이어야 정상. 설치 알림이 잡히면 권한 부여가 안 먹은 것
+   }
+   ```
+   `alertMsg`가 `null`이면 사용자에게 인증서 암호 입력을 요청한다. 아래는 이 절차의 세부와 예외다.
+   `browser_navigate` → 확인한 교육청 업무포털 로그인 주소(서울 예: `https://sen.eduptl.kr/bpm_lgn_lg00_001.do`). 공지 팝업은 그대로 두고
    `browser_click`(target `button:has-text("교육행정 전자서명 인증서 로그인")`)으로 인증서 창을 띄운 뒤,
    **사용자에게 "새로 뜬 크롬 창에서 인증서 암호를 입력해 달라"고 요청**한다(암호 입력은 자동화 금지).
    로그인 확인은 `browser_evaluate`로 `document.title === '업무포털 메인'`.
@@ -41,8 +66,20 @@ DevTools 사용을 차단했습니다"가 뜨면 확정이다. 탭·크롬 재�
    처음 진입할 때마다 뜰 수 있으니 **로그인 요청 전에 사용자에게 "크롬 창에 접근 허용을 묻는 창이 뜨면
    [허용]을 눌러 달라"고 함께 안내**한다. 허용한 뒤에는 오버레이가 풀려 `#btnLgn` 클릭이 통했다. 같은 차단을 CDP
    `Browser.grantPermissions`로 우회한 사례는 K-에듀파인 쪽에만 있고(K-에듀파인 스킬 `references/공문검색-수집.md`),
-   업무포털 로그인 화면에서는 아직 시험하지 않았다. → 사례
-2. **업무 시스템 진입**: 상단 메뉴([나이스]·[K-에듀파인]·[교데통])는 새 탭으로 열리므로
+   2026-11-10 업무포털 로그인 화면에서도 통했다. `run_code` 안에서 CDP 세션을 열어
+   `sen.eduptl.kr`·`idp1-sen.neis.go.kr:9443`·`klef.sen.go.kr` 세 출처에 이 권한을 준 뒤
+   `page.goto(로그인 주소)` → 오버레이 `display:none` 대기 → `#btnLgn` 클릭까지 한 호출로 묶으면 인증서 창이
+   바로 뜬다. 같은 호출에서 [K-에듀파인] 새 탭에도 `klef.sen.go.kr` 권한을 다시 준다. → 사례
+   **다른 세션의 Playwright 크롬은 이어 쓸 수 없다.** Playwright MCP는 `--remote-debugging-pipe`로 띄워서,
+   크롬을 띄운 세션만 그 창을 조작할 수 있다. 사용자가 "열려 있는 브라우저로 이어서"라고 해도, 그 창이
+   다른 세션의 것이면 새로 로그인해야 한다. 같은 작업 폴더의 세션들은 같은 프로필
+   (`ms-playwright-mcp\mcp-chrome-<해시>`)을 쓴다. 그래서 다른 세션이 띄운 창(빈 `about:blank`라도)이
+   살아 있으면 `Browser is already in use for … mcp-chrome-…` 오류가 난다. 크롬 프로세스의 명령줄에서
+   `--user-data-dir`를 보고 부모 `node`(`@playwright/mcp`) → 에이전트 프로세스를 거슬러 올라가 어느 세션 것인지
+   확인한다. 그 창을 닫을지는 사용자에게 묻는다.
+2. **업무 시스템 진입**: 로그인 직후 업무포털 탭에서 먼저 `page.setViewportSize({width: 1600, height: 950})`를
+   하고 공지 팝업을 [전체닫기]로 닫는다. 기본 뷰포트(약 1040폭)에서는 팝업이 상단 메뉴를 덮는다. → 사례
+   상단 메뉴([나이스]·[K-에듀파인]·[교데통])는 새 탭으로 열리므로
    `browser_run_code_unsafe`에서 이벤트 대기와 클릭을 함께 건다.
    ```js
    async (page) => {
@@ -56,8 +93,8 @@ DevTools 사용을 차단했습니다"가 뜨면 확정이다. 탭·크롬 재�
    }
    ```
    이어서 `browser_tabs`(`select`, 새 탭 index)로 작업 탭을 옮긴다.
-   새 탭 대기가 시간 초과되면 업무포털 공지 팝업이 메뉴를 덮고 있는 경우다. 팝업을 닫고 스크린샷으로
-   메뉴 위치를 다시 잡아 좌표 클릭과 `waitForEvent('page')`를 함께 건다.
+   그래도 새 탭 대기가 시간 초과되면 남은 팝업이 메뉴를 덮고 있는지 스크린샷으로 보고, 메뉴 위치를
+   다시 잡아 좌표 클릭과 `waitForEvent('page')`를 함께 건다.
 3. **화면 보기**: `browser_take_screenshot`(`scale: "css"`)이나 `run_code` 안의 `page.screenshot`.
    **저장 위치는 작업 폴더의 `.playwright-mcp/`만 허용된다**(스크래치 경로는 거부). 스크린샷 css 좌표가
    곧 클릭 좌표다.

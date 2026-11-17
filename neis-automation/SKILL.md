@@ -2,9 +2,9 @@
 name: neis-automation
 license: MIT
 description: >-
-  소속 교육청 업무포털 인증서 로그인 뒤 4세대 나이스(서울 예: sen.neis.go.kr) 화면 업무를 브라우저 자동화(기본 Playwright)로 처리하고, 나이스 대국민서비스를 거친 정부24 교육제증명 발급도 맡는다. 다음 요청에 사용한다. (1) 나이스 접속·업무포털 진입, 학교 밖 EVPN 원격 접속 (2) 복무·결재: 근무상황(육아시간·근무시간면제·연가·조퇴) 신청, 출장 신청, 외부강의 신고 등록·현황 조회, 상신함 결재 내역 추출, "지난번과 같은 조건으로 올려 줘" (3) 성적: 정기고사 OMR 일괄채점, 문항별 정답률·학년 통계 조회, 학기 시작 선행작업(성취기준·수행평가 영역·반영비율 등록), 수행평가 성적을 양식 CSV로 일괄업로드·강의실별 일람표 출력 (4) 학생부 화면 입력: 교과 세특을 한두 명 화면에서 직접 입력(전출생 등), 과목별 독서활동, 동아리 이수시간 확인·특기사항 입력 (5) 월 급여명세서(나의지급명세서) 내려받기 (6) 재직증명서 등 교육제증명 발급 (7) 나이스광장 질의등록. 세특 문안 작성과 반 전체 세특양식 CSV 기입은 이 스킬의 범위 밖이고, K-에듀파인 공문은 k-edufine-automation, 교데통 제출은 kyodetong-submit이 맡는다. NEIS, Seoul education portal, leave request, business trip, outside lecture report, payslip, certificate of employment, OMR grading, item analysis, performance assessment bulk upload.
+  소속 교육청 업무포털 인증서 로그인 뒤 4세대 나이스(서울 예: sen.neis.go.kr) 화면 업무를 브라우저 자동화(기본 Playwright)로 처리하고, 나이스 대국민서비스를 거친 정부24 교육제증명 발급도 맡는다. 다음 요청에 사용한다. (1) 나이스 접속·업무포털 진입, 학교 밖 EVPN 원격 접속 (2) 복무·결재: 근무상황(육아시간·근무시간면제·연가·조퇴) 신청, 출장 신청, 외부강의 신고 등록·현황 조회, 상신함 결재 내역 추출, "지난번과 같은 조건으로 올려 줘" (3) 성적: 정기고사 OMR 일괄채점, 문항별 정답률·학년 통계 조회, 학기 시작 선행작업(성취기준·수행평가 영역·반영비율 등록), 수행평가 성적을 양식 CSV로 일괄업로드·강의실별 일람표 출력 (4) 학생부 화면 입력: 교과 세특을 한두 명 화면에서 직접 입력(전출생 등), 과목별 독서활동, 동아리 이수시간 확인·특기사항 입력 (5) 월 급여명세서(나의지급명세서) 내려받기 (6) 재직증명서 등 교육제증명 발급 (7) 나이스광장 질의등록 (8) 연수 이력·직무연수 이수 시간 조회("연수 몇 시간 등재됐는지 봐 줘", 정량평가 45시간 확인). 세특 문안 작성과 반 전체 세특양식 CSV 기입은 이 스킬의 범위 밖이고, K-에듀파인 공문은 k-edufine-automation, 교데통 제출은 kyodetong-submit이 맡는다. NEIS, Seoul education portal, leave request, business trip, outside lecture report, payslip, certificate of employment, OMR grading, item analysis, performance assessment bulk upload.
 metadata:
-  version: "2.12.1"
+  version: "2.14.0"
 ---
 
 # 나이스 업무 자동화 (업무포털 → 나이스 진입)
@@ -131,6 +131,7 @@ metadata:
 | 독서활동상황 입력(과목별독서활동) | [references/독서활동.md](references/독서활동.md) |
 | 학기 시작 선행작업(성취기준·수행평가영역·반영비율) | [references/학기시작-선행작업.md](references/학기시작-선행작업.md) |
 | 수행평가 성적 양식 CSV 일괄업로드, 결시·학적변동 처리, 강의실별 일람표 출력(마감 전 제출) | [references/수행평가-일괄업로드.md](references/수행평가-일괄업로드.md) |
+| 연수 이력·직무연수 이수 시간 조회(정량평가 전문성개발 45시간 확인 등) | [references/연수이력-조회.md](references/연수이력-조회.md) |
 | 급여명세서(지급명세서) 내려받기 | [references/급여명세서.md](references/급여명세서.md) |
 | 재직증명서 등 교육제증명 발급(정부24, 업무포털 불필요) | [references/교육제증명-정부24.md](references/교육제증명-정부24.md) |
 | 교과 세특 입력(과목별세부능력및특기사항) | [references/교과-세특.md](references/교과-세특.md) |

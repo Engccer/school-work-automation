@@ -26,6 +26,8 @@ public class Clk {
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr h);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  [DllImport("user32.dll")] public static extern void keybd_event(byte k, byte s, uint f, IntPtr e);
   [DllImport("user32.dll")] public static extern void mouse_event(uint f, uint dx, uint dy, uint d, IntPtr e);
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int Left, Top, Right, Bottom; }
 
@@ -54,8 +56,15 @@ $h = [Clk]::H[$c[$Index]]
 "TITLE=" + [Clk]::T[$c[$Index]]
 
 [Clk]::BringWindowToTop($h) | Out-Null
-[Clk]::SetForegroundWindow($h) | Out-Null
-Start-Sleep -Milliseconds 500
+# SetForegroundWindow 는 터미널이 앞에 있으면 조용히 실패해 클릭이 터미널로 샌다. ALT 를 눌렀다 떼며 호출한다.
+for ($i = 0; $i -lt 3 -and [Clk]::GetForegroundWindow() -ne $h; $i++) {
+  [Clk]::keybd_event(0x12, 0, 0, [IntPtr]::Zero)
+  [Clk]::SetForegroundWindow($h) | Out-Null
+  [Clk]::keybd_event(0x12, 0, 2, [IntPtr]::Zero)
+  Start-Sleep -Milliseconds 300
+}
+if ([Clk]::GetForegroundWindow() -ne $h) { "ERR: 창을 앞으로 올리지 못함 (클릭 안 함)"; exit 2 }
+Start-Sleep -Milliseconds 200
 
 $r = New-Object Clk+RECT
 [Clk]::GetWindowRect($h, [ref]$r) | Out-Null

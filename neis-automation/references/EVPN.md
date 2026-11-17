@@ -65,6 +65,10 @@
   아니면 No로 표시된다. `C:\ProgramData\AXGATE\AXGATE VPN Client\Bin\AxgateVpnClient.exe`를
   실행하면 Installed/Running이 Yes로 바뀐다. 단일 인스턴스라 재실행해도 창이 다시 뜨지 않으며,
   클라이언트 로그인 창은 웹의 [Run VPN]으로 호출하는 것이 확실하다.
+- **클라이언트가 실행 중인데 로그인 창이 안 보이면** 숨은 창(`Axgate VPN Client`, 보이지 않음)만 남은 상태다.
+  클라이언트가 관리자 권한이라 일반 권한 `ShowWindow`로 꺼낼 수 없고, 트레이 아이콘도 키보드로 열리지 않았다.
+  `Stop-Process -Name AxgateVpnClient -Force`로 끈 뒤 웹 [Run VPN]을 다시 누르면 UAC → 로그인 창이 새로 뜬다.
+  **EVPN 웹 페이지를 새로고침하면 웹 로그인이 풀리므로** [Run VPN] 재호출은 새로고침 없이 `runVpnBtn2.click()`으로 한다.
 - **Chrome 비밀번호 관리자 자동완성은 미리보기일 뿐** DOM 값은 빈 문자열이다. 필드가 채워져
   보여도 실제 사용자 제스처 없이는 로그인이 진행되지 않는다.
 - **AXGATE VPN Client 로그인 창은 스크린리더로 단독 인증이 안 된다(확인 시점 버전 1.4.0.77).**

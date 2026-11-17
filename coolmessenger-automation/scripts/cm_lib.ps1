@@ -61,6 +61,18 @@ function Find-CMWindow {
     return [IntPtr]::Zero
 }
 
+function Test-CMDesktopLocked {
+    <# Windows 잠금 화면이 맨 앞이거나 맨 앞 창이 없으면(화면 꺼짐·보안 데스크톱, GetForegroundWindow=0) $true.
+       LockApp 프로세스는 잠금을 풀어도 남아 있으므로 프로세스 존재만으로 판정하지 않는다. 잠금 중에는 실제 클릭이 쿨메신저에 닿지 않아
+       WindowFromPoint 검사가 '좌표가 조직도 위가 아님'으로 실패하고 PrintWindow도 빈 그림을 낸다(실측). #>
+    $fg = [CM]::GetForegroundWindow()
+    if ($fg -eq [IntPtr]::Zero) { return $true }
+    [uint32]$fgPid = 0; [void][CM]::GetWindowThreadProcessId($fg, [ref]$fgPid)
+    $name = try { (Get-Process -Id $fgPid -ErrorAction Stop).ProcessName } catch { '' }
+    $title = [CM]::Txt($fg)
+    return ($name -eq 'LockApp') -or ($title -like '*잠금 화면*') -or ($title -like '*Lock screen*')
+}
+
 function Open-CMArchive {
     <#  메시지 관리함(받은 메시지 전체)을 연다.
 
