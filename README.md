@@ -1,6 +1,6 @@
 # school-work-automation
 
-한국 교사의 교육행정 시스템 업무를 코딩 에이전트(Claude Code 등)로 자동화하는 스킬 번들이다: 나이스(NEIS) 복무·성적·급여·증명, K-에듀파인 결재·기안, 교데통 데이터취합 제출, 교내 메신저 쿨메신저 회신·첨부 수합, 교직원 알림장(알림장관리 3.0) 전달사항 정리. 다섯 스킬 모두 저자가 실제 학교 행정업무에서 반복 사용하며 정립·검증했고, 화면마다 밟은 시행착오(지연 렌더링, 커스텀 드롭다운, 파일 첨부 우회 경로 등)가 그대로 축적돼 있다.
+한국 교사의 교육행정 시스템 업무를 코딩 에이전트(Claude Code 등)로 자동화하는 스킬 번들이다: 나이스(NEIS) 복무·성적·급여·증명, K-에듀파인 결재·기안, 교데통 데이터취합 제출, 교내 메신저 쿨메신저 회신·첨부 수합, 교직원 알림장(알림장관리 3.0) 전달사항 정리, e알리미 상벌점 등록, 컴시간알리미 시간표 변동 확인. 일곱 스킬 모두 저자가 실제 학교 행정업무에서 반복 사용하며 정립·검증했고, 화면마다 밟은 시행착오(지연 렌더링, 커스텀 드롭다운, 파일 첨부 우회 경로 등)가 그대로 축적돼 있다.
 
 저자는 시각장애인 교사다. 각 스킬에는 스크린 리더 사용자 관점의 확인 절차(스크린샷 대신 JS 검증, 접근성이 나쁜 화면의 현실적 우회)가 함께 기록돼 있다.
 
@@ -13,29 +13,32 @@
 | **kyodetong-submit** (교데통) | 교데통(교육행정데이터통합관리) 데이터취합 접수 → 파일 첨부 → 임시저장 → 내부승인 결재 상신 또는 K-에듀파인 전자결재 연계기안 → 완료 확인, 제출취소·회수 |
 | **coolmessenger-automation** (쿨메신저) | 교내 메신저 쿨메신저(CoolMessenger Gentoo)의 받은·보낸 메시지를 로컬 SQLite DB에서 직접 읽어 상대·시작 일시·문구로 조회, 대상자 명단과 대조한 회신 정리, 받은 메시지 첨부파일 내려받기, 회신 작성 창과 이전 받는사람을 재사용한 새 메시지 작성 창 채우기(발송은 사용자 확인 후), 함께 받은 수신자 대조, 조직도 내보내기·접속 상태 확인. 브라우저가 아니라 PowerShell Win32 창 조작 |
 | **alimjang-automation** (알림장) | 교직원 공용 알림장관리 3.0의 날짜별·부서별 전달사항을 학교 서버 공유 DB(FoxPro DBF)에서 읽기 전용으로 꺼내 날짜 폴더에 텍스트로 정리, 첨부 수집·텍스트 추출·요약, 키워드·부서·기간·지난 학년도 검색, 평일 아침 자동 정리(작업 스케줄러), 특별실 수리 신청 입력 |
-| **school-work-setup** (설치 점검) | 위 다섯 스킬의 기본 실행 요건과 선택 기능의 도구를 읽기 전용으로 점검. 알림장 기본 기능과 형식별 첨부 읽기의 연결·검증 상태를 구분해 보고 |
+| **ealimi-points** (e알리미 상벌점) | e알리미 상벌점V.2에서 상점·벌점 항목과 배점 조회, 사용자가 지정한 학생의 상벌점 단건·여러 명 등록, 알림 발송 설정 확인, 등록 전 기존 기록 조회와 등록 후 부여내역 검증. 가정통신문 발송은 다루지 않는다 |
+| **comcigan-timetable** (컴시간 시간표) | 컴시간알리미 학교 시간표를 화면 없는 Edge로 읽어 교사 본인의 그날 수업, 정규 시간표 대비 새로 생긴 수업·빠진 수업, 학교 전체 변경 칸 수를 텍스트로 정리. 알림장 평일 아침 자동 정리에 붙여 같은 날짜 폴더에 저장 |
+| **school-work-setup** (설치 점검) | 위 일곱 스킬의 기본 실행 요건과 선택 기능의 도구를 읽기 전용으로 점검. 알림장 기본 기능과 형식별 첨부 읽기의 연결·검증 상태를 구분해 보고 |
 
-K-에듀파인·쿨메신저·알림장 스크립트에는 실제 업무 시스템·앱을 건드리지 않는 시험이 각 스킬의 `scripts/tests/`에 들어 있다.
+K-에듀파인·쿨메신저·알림장·컴시간 스크립트에는 실제 업무 시스템·앱을 건드리지 않는 시험이 각 스킬의 `scripts/tests/`에 들어 있다.
 
 ## 필요한 것
 
 - **코딩 에이전트 CLI**: Claude Code 등 스킬(SKILL.md)을 인식하는 에이전트.
-- **Playwright MCP 서버**(`npx @playwright/mcp@latest`)와 크롬: 나이스·K-에듀파인·교데통 세 스킬의 기본 브라우저다. 에이전트 설정에 MCP 서버로 등록한다. 브라우저 제어 확장(Claude in Chrome에서 검증)도 쓸 수 있지만, 관리 정책이 개발자 도구를 막은 크롬에서는 붙지 않는다. 쿨메신저·알림장 스킬은 브라우저를 쓰지 않는다.
+- **Playwright MCP 서버**(`npx @playwright/mcp@latest`)와 크롬: 나이스·K-에듀파인·교데통·e알리미 네 스킬의 기본 브라우저다. 에이전트 설정에 MCP 서버로 등록한다. 브라우저 제어 확장(Claude in Chrome에서 검증)도 쓸 수 있지만, 관리 정책이 개발자 도구를 막은 크롬에서는 붙지 않는다. 쿨메신저·알림장 스킬은 브라우저를 쓰지 않고, 컴시간 스킬은 Python `playwright` 패키지로 설치된 Microsoft Edge를 화면 없이 띄운다.
 - **Windows**: K-에듀파인의 결재·기안 문서 창은 브라우저가 아니라 네이티브 앱(임베디드 IE)이라, 동봉된 PowerShell MSHTML 브리지 스크립트로 제어한다. 쿨메신저 스킬도 Win32 메시지·마우스 클릭으로 창을 조작하고, 알림장 스킬은 학교 서버 공유 폴더(UNC)와 작업 스케줄러를 쓴다(셋 다 Windows 전용). 나이스·교데통 스킬은 브라우저 조작만 쓴다.
-- **Python 3**: 나이스 급여명세서 CSV 변환(`openpyxl`), 쿨메신저 DB 내보내기(표준 라이브러리만), 알림장 DB 읽기(`dbfread`)와 첨부 추출에 쓴다. 알림장 기본 조회·첨부 저장에는 한글 처리 도구가 필요하지 않다. 첨부 내용 읽기는 선택 기능이며, 사용할 형식을 처리할 수 있는 도구를 권장한다. 예: [hwpx-tomd](https://github.com/Engccer/hwpx-tomd)(HWPX 읽기), [hwpx-automation](https://github.com/Engccer/hwpx-automation)(HWP 변환·HWPX 읽기). HWP는 `hwpx-tomd`만으로 읽을 수 없다.
-- **교육행정 전자서명 인증서**: 로그인은 항상 사용자가 직접 수행한다(아래 안전 원칙).
+- **Python 3**: 나이스 급여명세서 CSV 변환(`openpyxl`), 쿨메신저 DB 내보내기(표준 라이브러리만), 알림장 DB 읽기(`dbfread`)와 첨부 추출, 컴시간 시간표 조회(`playwright`)에 쓴다. 알림장 기본 조회·첨부 저장에는 한글 처리 도구가 필요하지 않다. 첨부 내용 읽기는 선택 기능이며, 사용할 형식을 처리할 수 있는 도구를 권장한다. 예: [hwpx-tomd](https://github.com/Engccer/hwpx-tomd)(HWPX 읽기), [hwpx-automation](https://github.com/Engccer/hwpx-automation)(HWP 변환·HWPX 읽기). HWP는 `hwpx-tomd`만으로 읽을 수 없다.
+- **교육행정 전자서명 인증서**(나이스·K-에듀파인·교데통): 로그인은 항상 사용자가 직접 수행한다(아래 안전 원칙).
 
 ## 적용 범위
 
-서울특별시교육청 환경(`sen.eduptl.kr` · `sen.neis.go.kr` · `klef.sen.go.kr` · `sen.edmgr.kr` · `evpn.sen.go.kr`)에서 검증했다. 4세대 나이스·K-에듀파인·교데통은 전국 공통 시스템이고 시도별 서브도메인과 세부 화면만 다르므로, 타 시도에서는 도메인을 바꿔 절차 골격을 그대로 적용하되 좌표·화면 차이를 확인하며 진행한다. 쿨메신저는 학교가 도입한 메신저 제품이라 교육청과 무관하며, Gentoo 버전 클라이언트에서 검증했다. 알림장관리 3.0도 학교가 쓰는 교내 프로그램이라 교육청과 무관하다.
+서울특별시교육청 환경(`sen.eduptl.kr` · `sen.neis.go.kr` · `klef.sen.go.kr` · `sen.edmgr.kr` · `evpn.sen.go.kr`)에서 검증했다. 4세대 나이스·K-에듀파인·교데통은 전국 공통 시스템이고 시도별 서브도메인과 세부 화면만 다르므로, 타 시도에서는 도메인을 바꿔 절차 골격을 그대로 적용하되 좌표·화면 차이를 확인하며 진행한다. 쿨메신저는 학교가 도입한 메신저 제품이라 교육청과 무관하며, Gentoo 버전 클라이언트에서 검증했다. 알림장관리 3.0도 학교가 쓰는 교내 프로그램이라 교육청과 무관하다. e알리미와 컴시간알리미는 학교가 가입해 쓰는 전국 공통 서비스이며, 상벌점 항목·배점과 시간표 구성은 학교마다 다르다.
 
 ## 안전 원칙
 
-다섯 스킬이 공통으로 지키는 경계다.
+일곱 스킬이 공통으로 지키는 경계다.
 
 - **인증서 비밀번호·자격증명 입력은 절대 자동화하지 않는다.** 로그인은 사용자(교사 본인)가 직접 한다.
+- **학교·교사 이름 같은 개인 설정은 스킬 파일에 적지 않는다.** 컴시간 스킬은 인자나 환경 변수로 받는다.
 - **공유 서버 DB(알림장)에는 직접 쓰지 않는다.** 읽기는 임시 사본에서 하고, 쓰기는 앱 화면으로만 한다.
-- **비가역 조작(상신·문서처리·제출·메시지 발송)은 사용자 승인 후에만** 실행한다. 자동화는 폼 채우기·검증까지이고, 확정 버튼 앞에서 요약해 확인받는다.
+- **비가역 조작(상신·문서처리·제출·메시지 발송)은 사용자 승인 후에만** 실행한다. 자동화는 폼 채우기·검증까지이고, 확정 버튼 앞에서 요약해 확인받는다. 상벌점은 대상·발생일·항목·점수·알림 설정이 모두 확정된 등록 요청일 때만 등록하고, 등록 전 기존 기록과 등록 후 부여내역을 대조한다.
 - **성적·공문 등 민감 화면의 스크린샷을 파일로 저장하지 않는다.**
 - **스킬 문서에 개인·학교 식별 정보를 기록하지 않는다.** 교사·학생 이름, 학교명, 문서번호, 계정 등은 일반화해서 갱신한다.
 
@@ -51,7 +54,7 @@ npx skills add Engccer/school-work-automation -g
 
 ## 비용
 
-전부 무료·오픈소스(MIT)다. 클라우드 API 과금이 없고, 필요한 것은 코딩 에이전트 자체의 사용 비용뿐이다.
+전부 무료·오픈소스(MIT)다. 클라우드 API 과금이 없고, 필요한 것은 코딩 에이전트 자체의 사용 비용뿐이다. 다만 e알리미의 SMS 알림은 학교 포인트를 차감하는 선택지라, 사용자가 허용한 범위에서만 켠다.
 
 ## License
 
@@ -61,13 +64,13 @@ MIT (c) 2026 Engccer
 
 ## English
 
-**school-work-automation** is a skill bundle that automates the administrative systems used by teachers in Korean public schools with a coding agent (Claude Code and similar): **NEIS** (attendance/leave requests, exam grading and item statistics, external-lecture reports, club, reading, and subject-comment records, payslip download with CSV reconciliation, employment certificates via Gov24), **K-EduFine** (approving incoming official documents, saving document bodies/attachments, drafting and submitting new official documents for external dispatch or internal approval, changing the public-disclosure status of completed documents), **Kyodetong** (the education-data collection platform: receive, attach, save, and submit through internal approval or K-EduFine e-approval), **CoolMessenger** (the in-school messenger: search sent and received messages and track replies straight from its local SQLite store, download attachments from received messages, and pre-fill replies; sending is left to the user), and **Alimjang** (the staff notice-board program "알림장관리 3.0": read daily department announcements read-only from the school server's FoxPro DBF share, collect and summarize attachments, search past years, and run a weekday-morning digest via Task Scheduler).
+**school-work-automation** is a skill bundle that automates the administrative systems used by teachers in Korean public schools with a coding agent (Claude Code and similar): **NEIS** (attendance/leave requests, exam grading and item statistics, external-lecture reports, club, reading, and subject-comment records, payslip download with CSV reconciliation, employment certificates via Gov24), **K-EduFine** (approving incoming official documents, saving document bodies/attachments, drafting and submitting new official documents for external dispatch or internal approval, changing the public-disclosure status of completed documents), **Kyodetong** (the education-data collection platform: receive, attach, save, and submit through internal approval or K-EduFine e-approval), **CoolMessenger** (the in-school messenger: search sent and received messages and track replies straight from its local SQLite store, download attachments from received messages, and pre-fill replies; sending is left to the user), **Alimjang** (the staff notice-board program "알림장관리 3.0": read daily department announcements read-only from the school server's FoxPro DBF share, collect and summarize attachments, search past years, and run a weekday-morning digest via Task Scheduler), **e-Alimi points** (look up merit/demerit items and scores in e알리미's 상벌점V.2, register the points the user specifies, and verify the saved record), and **Comcigan timetable** (read the school timetable on 컴시간알리미 with headless Edge and report the teacher's classes for the day, differences from the regular timetable, and school-wide changes).
 
-All five skills were built and repeatedly field-tested by the author, a blind teacher, in real school work. They encode hard-won workarounds for these legacy systems: delayed dialog rendering, custom DIV dropdowns that reject direct form-value setting, calendar-only date fields, iframe file uploaders that need a `DataTransfer` bridge, and an MSHTML PowerShell bridge for K-EduFine's embedded-IE native document windows.
+All seven skills were built and repeatedly field-tested by the author, a blind teacher, in real school work. They encode hard-won workarounds for these legacy systems: delayed dialog rendering, custom DIV dropdowns that reject direct form-value setting, calendar-only date fields, iframe file uploaders that need a `DataTransfer` bridge, and an MSHTML PowerShell bridge for K-EduFine's embedded-IE native document windows.
 
-**Requirements:** a coding agent CLI that recognizes skills, the Playwright MCP server (`npx @playwright/mcp@latest`) and Chrome for the three web systems (a browser-control extension also works where Chrome management policy allows it; verified with Claude in Chrome), Windows with its built-in PowerShell (K-EduFine's native document windows and CoolMessenger's Win32 windows; the NEIS and Kyodetong skills are browser-only), Python 3 for the helper scripts, and a Korean education digital certificate — login is always performed by the user, never automated.
+**Requirements:** a coding agent CLI that recognizes skills, the Playwright MCP server (`npx @playwright/mcp@latest`) and Chrome for the web systems (NEIS, K-EduFine, Kyodetong, e-Alimi; a browser-control extension also works where Chrome management policy allows it; verified with Claude in Chrome), Windows with its built-in PowerShell (K-EduFine's native document windows and CoolMessenger's Win32 windows; the NEIS, Kyodetong and e-Alimi skills are browser-only), Python 3 for the helper scripts (the Comcigan skill also needs the `playwright` package and Microsoft Edge), and a Korean education digital certificate; login is always performed by the user, never automated.
 
-**Scope:** verified against the Seoul Metropolitan Office of Education environment (`sen.*` domains). The systems are nationwide; other provinces differ only in subdomains and screen details. CoolMessenger is a school-licensed product independent of the education office (verified on the Gentoo client), as is the Alimjang notice-board program.
+**Scope:** verified against the Seoul Metropolitan Office of Education environment (`sen.*` domains). The systems are nationwide; other provinces differ only in subdomains and screen details. CoolMessenger is a school-licensed product independent of the education office (verified on the Gentoo client), as is the Alimjang notice-board program. e-Alimi and Comcigan are nationwide services that schools subscribe to.
 
 **Safety principles:** credentials are never automated; irreversible actions (submit, approve, dispatch) run only after explicit user confirmation; screenshots of sensitive screens are never saved to disk; skill updates never record personal or school-identifying information.
 

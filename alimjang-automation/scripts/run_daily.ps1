@@ -71,6 +71,16 @@ $folder = Split-Path $saved.Substring(6)
 $label = Split-Path -Leaf $folder
 $summary = Join-Path $folder "$label 알림장 첨부 요약.txt"
 
+# 같은 날짜 폴더에 컴시간 시간표(comcigan-timetable 스킬)를 저장한다. 실패해도 알림장 처리는 계속하고 종료 코드에 넣지 않는다.
+$comci = Join-Path $scripts '..\..\comcigan-timetable\scripts\comci.py'
+if (Test-Path -LiteralPath $comci) {
+  $co = & python $comci --date $Date --out $folder 2>&1
+  $coCode = $LASTEXITCODE
+  $co | ForEach-Object { Write-Log "comci: $_" }
+  if ($coCode -eq 2) { Write-Log '컴시간 학교·교사 미설정 · 시간표 건너뜀' }
+  elseif ($coCode -ne 0) { Write-Log "컴시간 시간표 조회 실패(종료 코드 $coCode) · 알림장 처리는 계속" }
+}
+
 $atts = @(Get-ChildItem -LiteralPath $folder -Filter '첨부*' -File -ErrorAction SilentlyContinue)
 if ($atts.Count -eq 0) { Write-Log '첨부 없음 · 요약 생략, 종료'; exit 0 }
 if ((Test-Path -LiteralPath $summary) -and -not $Force) { Write-Log '요약 파일 이미 있음 · 생략, 종료'; exit 0 }

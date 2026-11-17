@@ -83,6 +83,13 @@ function python {
     if ($global:extractMode -eq 'partial') { "SKIP 첨부2_선택.hwp 테스트 도구 없음" }
     $global:LASTEXITCODE = 0; return
   }
+  if ($a[0] -like '*comci.py') {
+    $global:comciArgs = $a
+    if ($global:comciMode -eq 'fail') { Write-Error '컴시간알리미 조회 실패'; $global:LASTEXITCODE = 1; return }
+    $out = $a[$a.IndexOf('--out') + 1]
+    $p = Join-Path $out '시간표.txt'; '시간표' | Set-Content -Encoding utf8NoBOM $p
+    "SAVED $p"; $global:LASTEXITCODE = 0; return
+  }
   throw "예상 밖 python 호출: $a"
 }
 function claude {
@@ -111,6 +118,26 @@ foreach ($fc in 1, -1073741819) {
     Assert ((Read-Log $fx '2020-09-21') -match 'dbfread') "로그에 export 오류 출력이 남는다($fc)"
     Assert ($null -eq $global:prompt) "export 실패 시 claude 를 부르지 않는다($fc)"
   } finally { Remove-Item -Recurse -Force $fx.Tmp }
+}
+
+# 1-1. 컴시간 시간표: 스크립트가 있으면 같은 날짜 폴더에 저장하고, 실패해도 종료 코드는 알림장 결과를 따른다
+foreach ($cm in 'ok', 'fail') {
+  $global:fx = New-Fixture; $global:mode = 'real'; $global:prompt = $null; $global:comciMode = $cm; $global:comciArgs = $null
+  try {
+    $cdir = Join-Path $fx.Proj '.claude\skills\comcigan-timetable\scripts'
+    New-Item -ItemType Directory -Force $cdir | Out-Null
+    '# fake' | Set-Content -Encoding utf8NoBOM (Join-Path $cdir 'comci.py')
+    Write-Rows $fx '2020-09-21' $null
+    $code = Invoke-Daily $fx '2020-09-21'
+    $folder = Join-Path $fx.Proj '2020 업무\4. 교무\알림장\2020-09-21(월)'
+    Assert ($code -eq 0) "컴시간 $cm → 알림장 종료 코드 0 (실제 $code)"
+    Assert ("$global:comciArgs" -match '--date 2020-09-21') "컴시간 $cm 에 날짜를 넘긴다"
+    if ($cm -eq 'ok') {
+      Assert (Microsoft.PowerShell.Management\Test-Path -LiteralPath (Join-Path $folder '시간표.txt')) '시간표가 알림장 날짜 폴더에 저장된다'
+    } else {
+      Assert ((Read-Log $fx '2020-09-21') -match '컴시간 시간표 조회 실패') '컴시간 실패가 로그에 남는다'
+    }
+  } finally { Remove-Item -Recurse -Force $fx.Tmp; $global:comciMode = $null }
 }
 
 # 2. 첨부 없는 날은 그대로 0

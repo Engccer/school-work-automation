@@ -143,7 +143,7 @@ PYTHONIOENCODING=utf-8 python scripts/alim_export.py --date 2026-09-29 --stdout 
   Register-ScheduledTask -TaskName '알림장 일일 정리' -Action $a -Trigger $t -Settings $s
   ```
 - 실행 파일은 `scripts/run_daily.ps1`이다.
-- 흐름은 서버 접근 확인 → `alim_export.py --date 오늘` → 첨부가 있고 요약 파일이 없으면 `extract_attachments.py`로 `%LOCALAPPDATA%\알림장-자동화\extract\<날짜>\`에 텍스트 추출(14일 지난 추출본은 자동 삭제) → 에이전트 CLI가 **추출된 .md만 읽어** 요약 작성 순이다. 요약 규칙은 프롬프트에 직접 들어 있다. 기본 에이전트는 Claude Code이고 파일 읽기·쓰기와 `python`·`grep`·`awk` 실행만 허용해 부른다. 다른 에이전트를 쓰려면 환경 변수 `ALIM_AGENT_CMD`에 명령과 옵션을 공백으로 나눠 적는다(공백이 든 경로, 따옴표로 묶은 옵션, `.cmd`·`.bat` 래퍼는 쓸 수 없다). 프롬프트는 마지막 인자로 붙고, 파일 접근 권한은 그 에이전트 설정을 따른다.
+- 흐름은 서버 접근 확인 → `alim_export.py --date 오늘` → `comcigan-timetable` 스킬의 `comci.py --date 오늘 --out <날짜 폴더>`로 시간표 변동 저장(스크립트가 있을 때만, 실패해도 계속·종료 코드 무관) → 첨부가 있고 요약 파일이 없으면 `extract_attachments.py`로 `%LOCALAPPDATA%\알림장-자동화\extract\<날짜>\`에 텍스트 추출(14일 지난 추출본은 자동 삭제) → 에이전트 CLI가 **추출된 .md만 읽어** 요약 작성 순이다. 요약 규칙은 프롬프트에 직접 들어 있다. 기본 에이전트는 Claude Code이고 파일 읽기·쓰기와 `python`·`grep`·`awk` 실행만 허용해 부른다. 다른 에이전트를 쓰려면 환경 변수 `ALIM_AGENT_CMD`에 명령과 옵션을 공백으로 나눠 적는다(공백이 든 경로, 따옴표로 묶은 옵션, `.cmd`·`.bat` 래퍼는 쓸 수 없다). 프롬프트는 마지막 인자로 붙고, 파일 접근 권한은 그 에이전트 설정을 따른다.
 - 이미 요약 파일이 있으면 에이전트를 부르지 않는다(재실행해도 무해). 다시 쓰게 하려면 `-Force`를 붙이고, 지난 날짜는 `-Date 2026-09-22`로 돌린다.
 - 로그는 `%LOCALAPPDATA%\알림장-자동화\log\<날짜>.log`에 남는다. 첨부별 결과는 날짜 폴더의 `<날짜> 알림장 첨부 처리 결과.txt`에도 남긴다. 종료 코드는 0 기본 정리 완료(선택 도구가 없어 첨부 읽기를 건너뛴 경우 포함), 1 서버 접근 불가, 2 추출 실행 오류·전체 변환 실패·요약 미생성, 3 `alim_export.py` 실패다. 일부 첨부만 실패하면 가능한 첨부를 요약하고 처리 결과에 미처리 파일을 남긴다.
 - 점검은 `Get-ScheduledTaskInfo -TaskName '알림장 일일 정리'`(LastTaskResult·NextRunTime)로 하고, 수동 실행은 `Start-ScheduledTask`로 한다. 해제는 `Unregister-ScheduledTask -TaskName '알림장 일일 정리'`이다.

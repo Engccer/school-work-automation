@@ -7,7 +7,7 @@
 param([string[]]$Skill)
 [Console]::OutputEncoding = [Text.Encoding]::UTF8   # bash 등 다른 셸이 출력을 받아도 한글이 깨지지 않게
 
-$all = 'neis-automation', 'k-edufine-automation', 'kyodetong-submit', 'coolmessenger-automation', 'alimjang-automation'
+$all = 'neis-automation', 'k-edufine-automation', 'kyodetong-submit', 'coolmessenger-automation', 'alimjang-automation', 'ealimi-points', 'comcigan-timetable'
 $targets = if ($Skill) { $Skill -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ } } else { $all }
 $bad = $targets | Where-Object { $_ -notin $all }
 if ($bad) { Write-Host "알 수 없는 스킬: $($bad -join ', '). 가능한 값: $($all -join ', ')"; exit 2 }
@@ -78,7 +78,7 @@ if ($isWin) { Report 'OK' 'Windows' } else { Report '없음' 'Windows' 'K-에듀
 if (Get-Command npx -ErrorAction SilentlyContinue) { Report 'OK' 'Node.js(npx)' }
 else { Report '없음' 'Node.js(npx)' '스킬 설치·갱신에 필요. https://nodejs.org' }
 $web = 'neis-automation', 'k-edufine-automation', 'kyodetong-submit'
-if ($targets | Where-Object { $_ -ne 'k-edufine-automation' -and $_ -ne 'kyodetong-submit' }) {
+if ($targets | Where-Object { $_ -notin 'k-edufine-automation', 'kyodetong-submit', 'ealimi-points' }) {
   if ($pyExe) { Report 'OK' "Python 3 ($pyExe)" } else { Report '없음' 'Python 3' 'python.org 또는 winget install Python.Python.3.12' }
 }
 if ($targets | Where-Object { $_ -in $web }) {
@@ -93,6 +93,17 @@ foreach ($s in $targets) {
   SkillFolder $s
   switch ($s) {
     'neis-automation' { CheckModules @('openpyxl') '급여명세서 CSV 변환에만 필요' }
+    'ealimi-points' {
+      Report '확인' 'Playwright 브라우저 도구' '에이전트가 자기 도구 목록으로 확인한다(school-work-setup SKILL.md 2단계). 로그인은 사용자가 Playwright 창에서 직접 한다'
+    }
+    'comcigan-timetable' {
+      CheckModules @('playwright') ''
+      $edge = @(${env:ProgramFiles(x86)}, $env:ProgramFiles) | Where-Object { $_ } |
+        ForEach-Object { Join-Path $_ 'Microsoft\Edge\Application\msedge.exe' } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+      if ($edge) { Report 'OK' 'Microsoft Edge' } else { Report '없음' 'Microsoft Edge' '화면 없는 Edge로 시간표를 읽는다. Edge를 설치한다' }
+      if ($env:COMCI_SCHOOL -and $env:COMCI_TEACHER) { Report 'OK' '학교·교사 환경 변수(COMCI_SCHOOL·COMCI_TEACHER)' }
+      else { Report '확인' '학교·교사 환경 변수' '자동 실행에 붙일 때만 필요. 수동 조회는 --school·--teacher 인자로 준다. 방금 등록했으면 새 터미널에서 다시 점검' }
+    }
     'coolmessenger-automation' {
       $memo = Join-Path "$env:LOCALAPPDATA" 'CoolMessenger\Memo'
       if (Test-Path -LiteralPath $memo) { Report 'OK' '쿨메신저 클라이언트 메시지 DB' }
