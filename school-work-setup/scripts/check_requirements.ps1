@@ -89,6 +89,14 @@ function RemoteDebugProbe($chrome) {
     }
   }
 }
+# 학교·기관이 관리하는 크롬 프로필 이름. 그 프로필에 개발자 도구 차단 정책이 걸리면 같은 크롬 안에서도 그 프로필의 탭에는 붙지 못한다(실측)
+function ManagedProfiles {
+  $f = Join-Path $env:LOCALAPPDATA 'Google\Chrome\User Data\Local State'
+  try {
+    $cache = (Get-Content -LiteralPath $f -Raw -Encoding UTF8 | ConvertFrom-Json).profile.info_cache
+    @($cache.PSObject.Properties | Where-Object { $_.Value.is_managed -eq 1 } | ForEach-Object { $_.Value.name })
+  } catch { @() }
+}
 # 평소 크롬에서 원격 디버깅을 켜 두면 기본 프로필 폴더에 DevToolsActivePort 가 생기고 그 포트가 열려 있다
 function RemoteDebugOn {
   $f = Join-Path $env:LOCALAPPDATA 'Google\Chrome\User Data\DevToolsActivePort'
@@ -122,6 +130,8 @@ function BrowserNeeds {
       'ok' {
         if (RemoteDebugOn) { Report 'OK' $item '사용 가능. 평소 크롬의 원격 디버깅이 이미 켜져 있다' }
         else { Report 'OK' $item '사용 가능. 쓸 때 사용자가 chrome://inspect/#remote-debugging 에서 켠다(SKILL.md 2단계)' }
+        $managed = @(ManagedProfiles)
+        if ($managed.Count) { Report '확인' "학교·기관 관리 크롬 프로필: $($managed -join ', ')" '이 중 개발자 도구 차단 정책이 걸린 프로필의 탭에는 붙지 못한다. 업무포털은 관리되지 않는 프로필에서 로그인해 이어 쓴다' }
       }
       'blocked' { Report '확인' $item '정책 차단. 이 PC는 Playwright만 사용' }
       default { Report '확인' $item "미확인(시험 실패: $script:probeError). Playwright를 쓴다" }
