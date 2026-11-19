@@ -57,7 +57,17 @@ function BrowserNeeds {
     $p = Get-ItemProperty -LiteralPath $k -ErrorAction SilentlyContinue
     if ($p -and ("$($p.DeveloperToolsAvailability)" -eq '2' -or "$($p.DeveloperToolsDisabled)" -eq '1')) { $blocked = $true }
   }
-  if ($blocked) { Report '확인' 'Chrome 개발자 도구' 'PC 관리 정책이 막고 있어 브라우저 제어 확장은 붙지 못한다. Playwright를 쓴다' }
+  if ($blocked) { Report '확인' 'Chrome 개발자 도구' 'PC 관리 정책이 막고 있어 브라우저 제어 확장은 붙지 못하고 로그인된 크롬 이어 쓰기도 막힐 가능성이 높다. 이 PC는 Playwright만 사용' }
+  else {
+    # 로그인된 크롬 이어 쓰기(원격 디버깅 자동 연결)는 크롬 144 이상. 쓸 수 있는지는 사용자가 inspect 페이지를 열어 가린다
+    $chrome = @(${env:ProgramFiles}, ${env:ProgramFiles(x86)}, $env:LOCALAPPDATA) | Where-Object { $_ } |
+      ForEach-Object { Join-Path $_ 'Google\Chrome\Application\chrome.exe' } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+    $ver = if ($chrome) { (Get-Item -LiteralPath $chrome).VersionInfo.ProductVersion }
+    $major = if ($ver -match '^(\d+)\.') { [int]$Matches[1] } else { 0 }
+    if (-not $chrome) { Report '확인' '로그인된 크롬 이어 쓰기(선택)' 'Chrome을 찾지 못함. Edge를 쓰면 사용자가 edge://inspect/#remote-debugging 을 열어 판정한다(SKILL.md 2단계)' }
+    elseif ($major -lt 144) { Report '확인' "로그인된 크롬 이어 쓰기(선택, Chrome $ver)" '자동 연결 대상 아님(144 이상만). Playwright 사용' }
+    else { Report '확인' "로그인된 크롬 이어 쓰기(선택, Chrome $ver)" '사용자가 chrome://inspect/#remote-debugging 을 열어 판정한다(SKILL.md 2단계)' }
+  }
   $kcase = Join-Path ${env:ProgramFiles(x86)} 'Ksign\KCase\KCaseAgent.exe'
   if (${env:ProgramFiles(x86)} -and (Test-Path -LiteralPath $kcase)) { Report 'OK' '인증서 로그인 프로그램(KCase Agent)' }
   else { Report '없음' '인증서 로그인 프로그램(KCase Agent)' '업무포털 로그인 페이지 하단 [인증서프로그램다운로드]로 설치(서울 업무포털 기준)' }

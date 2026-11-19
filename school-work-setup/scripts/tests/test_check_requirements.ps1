@@ -21,6 +21,7 @@ foreach ($h in '공통', '업무포털 공통', 'neis-automation', 'k-edufine-au
 }
 Assert (($code -eq 1) -eq ($out -match '\[없음\]')) '종료 코드 1 과 [없음] 줄의 존재가 일치한다'
 Assert (([regex]::Matches($out, 'KCase Agent')).Count -eq 1) '업무포털 공통 항목은 한 번만 나온다'
+Assert ($out -match '로그인된 크롬 이어 쓰기') '업무포털 공통에서 로그인된 크롬 이어 쓰기 가능 여부를 낸다'
 
 $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $script -Skill coolmessenger-automation 2>&1 | Out-String
 Assert ($out -notmatch '업무포털 공통') '브라우저 스킬이 없으면 업무포털 공통을 건너뛴다'
