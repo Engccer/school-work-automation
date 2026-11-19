@@ -1,6 +1,7 @@
 ﻿<#
   school-work-automation 번들 요구사항 점검. 읽기만 하고 아무것도 설치·변경하지 않는다.
   사용: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check_requirements.ps1 [-Skill neis-automation,alimjang-automation]
+  크롬 원격 디버깅 시험만 임시 프로필로 화면 없는 크롬을 잠깐 띄웠다가 지운다.
   출력: 스킬마다 "OK / 없음 / 확인" 줄. 종료 코드 0 = 빠진 것 없음, 1 = 빠진 것 있음, 2 = 잘못된 인자.
   Playwright 브라우저 도구처럼 스크립트로 볼 수 없는 것은 SKILL.md 절차가 맡는다.
 #>
@@ -49,24 +50,82 @@ function SkillFolder($name) {
   if (Test-Path (Join-Path $skillsRoot "$name\SKILL.md")) { Report 'OK' "스킬 폴더 $name" }
   else { Report '없음' "스킬 폴더 $name" 'npx skills add Engccer/school-work-automation -g' }
 }
+# 임시 프로필의 화면 없는 크롬을 원격 디버깅 포트로 띄워 실제로 붙어 본다. 평소 프로필과 설정은 건드리지 않고, 끝나면 임시 프로필을 지운다.
+# RemoteDebuggingAllowed=0 이면 포트가 열리지 않고, DeveloperToolsAvailability=2 이면 포트는 열려도 탭에 붙지 못한다(실측).
+# 레지스트리 정책은 시험 전에 따로 읽으므로, 여기서 포트가 안 열리는 것은 원인을 단정하지 않고 미확인으로 둔다
+function RemoteDebugProbe($chrome) {
+  $tmp = Join-Path ([IO.Path]::GetTempPath()) ('swa_rdp_' + [guid]::NewGuid().ToString('N'))
+  $proc = $null; $ws = $null
+  try {
+    $proc = Start-Process -FilePath $chrome -ArgumentList '--headless=new', "--user-data-dir=`"$tmp`"", '--remote-debugging-port=0', '--no-first-run', 'about:blank' -PassThru -WindowStyle Hidden
+    $portFile = Join-Path $tmp 'DevToolsActivePort'
+    $lines = @()
+    for ($i = 0; $i -lt 40 -and $lines.Count -lt 2; $i++) {
+      Start-Sleep -Milliseconds 250
+      if ($proc.HasExited) { $script:probeError = '크롬이 바로 종료됨'; return 'error' }
+      if (Test-Path -LiteralPath $portFile) { $lines = @(Get-Content -LiteralPath $portFile -ErrorAction SilentlyContinue) }
+    }
+    if ($lines.Count -lt 2) { $script:probeError = '10초 안에 디버깅 포트가 열리지 않음'; return 'timeout' }
+    $list = Invoke-RestMethod "http://127.0.0.1:$($lines[0])/json/list" -TimeoutSec 5
+    $page = $list | ForEach-Object { $_ } | Where-Object { $_.type -eq 'page' } | Select-Object -First 1   # 5.1은 JSON 배열을 한 덩어리로 돌려준다
+    if (-not $page) { $script:probeError = '시험용 탭을 찾지 못함'; return 'error' }
+    $none = [Threading.CancellationToken]::None
+    $ws = New-Object System.Net.WebSockets.ClientWebSocket
+    if (-not ($ws.ConnectAsync([Uri]$page.webSocketDebuggerUrl, $none).Wait(5000) -and $ws.State -eq 'Open')) { return 'blocked' }
+    $msg = [Text.Encoding]::UTF8.GetBytes('{"id":1,"method":"Runtime.evaluate","params":{"expression":"1+1"}}')
+    $ws.SendAsync([ArraySegment[byte]]::new($msg), 'Text', $true, $none).Wait(5000) | Out-Null
+    $buf = New-Object byte[] 4096
+    $r = $ws.ReceiveAsync([ArraySegment[byte]]::new($buf), $none)
+    if ($r.Wait(5000) -and [Text.Encoding]::UTF8.GetString($buf, 0, $r.Result.Count) -match '"value":2') { return 'ok' }
+    return 'blocked'
+  } catch [AggregateException] { return 'blocked' }
+  catch { $script:probeError = $_.Exception.Message; return 'error' }
+  finally {
+    if ($ws) { $ws.Dispose() }
+    if ($proc) { & taskkill /T /F /PID $proc.Id 2>$null | Out-Null; $proc.WaitForExit(5000) | Out-Null }
+    for ($i = 0; $i -lt 10 -and (Test-Path -LiteralPath $tmp); $i++) {
+      Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
+      if (Test-Path -LiteralPath $tmp) { Start-Sleep -Milliseconds 300 }
+    }
+  }
+}
+# 평소 크롬에서 원격 디버깅을 켜 두면 기본 프로필 폴더에 DevToolsActivePort 가 생기고 그 포트가 열려 있다
+function RemoteDebugOn {
+  $f = Join-Path $env:LOCALAPPDATA 'Google\Chrome\User Data\DevToolsActivePort'
+  $port = if (Test-Path -LiteralPath $f) { Get-Content -LiteralPath $f -TotalCount 1 -ErrorAction SilentlyContinue }
+  if (-not $port) { return $false }
+  $c = New-Object Net.Sockets.TcpClient
+  try { $c.ConnectAsync('127.0.0.1', [int]$port).Wait(1000) -and $c.Connected } catch { $false } finally { $c.Dispose() }
+}
 function BrowserNeeds {
   Report '확인' 'Playwright 브라우저 도구' '에이전트가 자기 도구 목록으로 확인한다(SKILL.md 2단계)'
   # 개발자 도구를 막는 정책이 걸리면 확장도 탭에 붙지 못한다. 클라우드 관리 정책은 레지스트리에 없어 개발자 도구를 열어 본다
-  $blocked = $false
+  $blocked = $false; $rdOff = $false
   foreach ($k in 'HKLM:\SOFTWARE\Policies\Google\Chrome', 'HKCU:\SOFTWARE\Policies\Google\Chrome') {
     $p = Get-ItemProperty -LiteralPath $k -ErrorAction SilentlyContinue
     if ($p -and ("$($p.DeveloperToolsAvailability)" -eq '2' -or "$($p.DeveloperToolsDisabled)" -eq '1')) { $blocked = $true }
+    if ($p -and "$($p.RemoteDebuggingAllowed)" -eq '0') { $rdOff = $true }
   }
-  if ($blocked) { Report '확인' 'Chrome 개발자 도구' 'PC 관리 정책이 막고 있어 브라우저 제어 확장은 붙지 못하고 로그인된 크롬 이어 쓰기도 막힐 가능성이 높다. 이 PC는 Playwright만 사용' }
+  if ($blocked) { Report '확인' 'Chrome 개발자 도구' 'PC 관리 정책이 막고 있어 브라우저 제어 확장은 붙지 못한다. Playwright를 쓴다' }
+  # 로그인된 크롬 이어 쓰기(크롬 144 이상의 원격 디버깅 자동 연결)를 이 PC 정책이 허용하는지 직접 시험한다
+  $chrome = @(${env:ProgramFiles}, ${env:ProgramFiles(x86)}, $env:LOCALAPPDATA) | Where-Object { $_ } |
+    ForEach-Object { Join-Path $_ 'Google\Chrome\Application\chrome.exe' } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+  $ver = if ($chrome) { (Get-Item -LiteralPath $chrome).VersionInfo.ProductVersion }
+  $major = if ($ver -match '^(\d+)\.') { [int]$Matches[1] } else { 0 }
+  $item = "로그인된 크롬 이어 쓰기(선택, Chrome $ver)"
+  if (-not $chrome) { Report '확인' '로그인된 크롬 이어 쓰기(선택)' '미확인(Chrome을 찾지 못함). Playwright를 쓴다' }
+  elseif ($major -lt 144) { Report '확인' $item '미확인(자동 연결은 144 이상만 된다). Playwright를 쓴다' }
+  elseif ($blocked -or $rdOff) { Report '확인' $item '정책 차단. 이 PC는 Playwright만 사용' }
   else {
-    # 로그인된 크롬 이어 쓰기(원격 디버깅 자동 연결)는 크롬 144 이상. 쓸 수 있는지는 사용자가 inspect 페이지를 열어 가린다
-    $chrome = @(${env:ProgramFiles}, ${env:ProgramFiles(x86)}, $env:LOCALAPPDATA) | Where-Object { $_ } |
-      ForEach-Object { Join-Path $_ 'Google\Chrome\Application\chrome.exe' } | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-    $ver = if ($chrome) { (Get-Item -LiteralPath $chrome).VersionInfo.ProductVersion }
-    $major = if ($ver -match '^(\d+)\.') { [int]$Matches[1] } else { 0 }
-    if (-not $chrome) { Report '확인' '로그인된 크롬 이어 쓰기(선택)' 'Chrome을 찾지 못함. Edge를 쓰면 사용자가 edge://inspect/#remote-debugging 을 열어 판정한다(SKILL.md 2단계)' }
-    elseif ($major -lt 144) { Report '확인' "로그인된 크롬 이어 쓰기(선택, Chrome $ver)" '자동 연결 대상 아님(144 이상만). Playwright 사용' }
-    else { Report '확인' "로그인된 크롬 이어 쓰기(선택, Chrome $ver)" '사용자가 chrome://inspect/#remote-debugging 을 열어 판정한다(SKILL.md 2단계)' }
+    $script:probeError = '원인 모름'
+    switch (RemoteDebugProbe $chrome) {
+      'ok' {
+        if (RemoteDebugOn) { Report 'OK' $item '사용 가능. 평소 크롬의 원격 디버깅이 이미 켜져 있다' }
+        else { Report 'OK' $item '사용 가능. 쓸 때 사용자가 chrome://inspect/#remote-debugging 에서 켠다(SKILL.md 2단계)' }
+      }
+      'blocked' { Report '확인' $item '정책 차단. 이 PC는 Playwright만 사용' }
+      default { Report '확인' $item "미확인(시험 실패: $script:probeError). Playwright를 쓴다" }
+    }
   }
   $kcase = Join-Path ${env:ProgramFiles(x86)} 'Ksign\KCase\KCaseAgent.exe'
   if (${env:ProgramFiles(x86)} -and (Test-Path -LiteralPath $kcase)) { Report 'OK' '인증서 로그인 프로그램(KCase Agent)' }
