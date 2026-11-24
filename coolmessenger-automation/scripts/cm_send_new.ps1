@@ -14,7 +14,7 @@ param(
     [Parameter(Mandatory = $true)][string]$Name,
     [string]$TitleFile,
     [Parameter(Mandatory = $true)][string]$BodyFile,
-    [string]$Attach,
+    [string[]]$Attach,
     [string]$Shot,
     [switch]$PlainText,
     [switch]$Send
@@ -119,7 +119,7 @@ function Save-WindowShot([IntPtr]$win, [string]$path) {
     $bmp.Save($path, [Drawing.Imaging.ImageFormat]::Png); $bmp.Dispose()
 }
 
-if ($Attach -and -not (Test-Path -LiteralPath $Attach)) { throw "첨부 파일이 없습니다: $Attach" }
+foreach ($a in @($Attach)) { if ($a -and -not (Test-Path -LiteralPath $a)) { throw "첨부 파일이 없습니다: $a" } }
 $titleText = ''
 if ($TitleFile) { $titleText = [string](Get-Content -LiteralPath $TitleFile -Raw -Encoding UTF8) }
 if (Find-CMCompose) { throw '이미 열린 작성 창이 있습니다. 먼저 정리하세요.' }
@@ -194,7 +194,8 @@ Send-CtrlKey 0x24; Send-CtrlKey 0x56
 Start-Sleep -Milliseconds 600
 
 # 5. 첨부 · 모달이라 PostMessage, "열기" 창은 경로 입력란(1148) + WM_COMMAND 1
-if ($Attach) {
+#    -Attach에 여러 파일을 주면 한 개씩 차례로 붙인다(-Attach a,b,c).
+foreach ($att in @($Attach | Where-Object { $_ })) {
     [void][CM]::PostMessage($btnAttach, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)
     $dlg = $null
     for ($i = 0; $i -lt 40; $i++) {
@@ -207,18 +208,19 @@ if ($Attach) {
     if (-not $dlg) { throw '"열기" 대화상자가 뜨지 않았습니다.' }
     $edit = [CM]::Kids([IntPtr]$dlg) | Where-Object { [CM]::GetDlgCtrlID($_) -eq 1148 } | Select-Object -First 1
     if (-not $edit) { throw '"열기" 대화상자의 경로 입력란(1148)을 찾지 못했습니다.' }
-    $ptr = [Runtime.InteropServices.Marshal]::StringToHGlobalUni('"' + $Attach + '"')
+    $ptr = [Runtime.InteropServices.Marshal]::StringToHGlobalUni('"' + $att + '"')
     try { [void][CM]::Msg($edit, 0x000C, [IntPtr]::Zero, $ptr) }
     finally { [Runtime.InteropServices.Marshal]::FreeHGlobal($ptr) }
     Start-Sleep -Milliseconds 400
     [void][CM]::PostMessage([IntPtr]$dlg, 0x0111, [IntPtr]1, [IntPtr]::Zero)
     Start-Sleep -Seconds 3
 
-    $stem = [IO.Path]::GetFileNameWithoutExtension($Attach)
+    $stem = [IO.Path]::GetFileNameWithoutExtension($att)
     $labels = @()
     foreach ($k in [CM]::Kids([IntPtr]$win)) {
         $t = [CM]::Txt($k)
-        if ($t -like "*$stem*" -and [CM]::IsWindowVisible($k)) { $labels += $t }
+        # 첨부가 4개를 넘으면 라벨 칸이 스크롤돼 뒤 라벨은 IsWindowVisible가 false다(실측). 보임 여부는 보지 않는다
+        if ($t -like "*$stem*" -and $t -match '\(\d[\d,.]* ?[KMG]?B\)$') { $labels += $t }
     }
     Write-Output "첨부: $($labels -join ' | ')"
     if ($labels.Count -lt 1) { throw '첨부가 붙지 않았습니다.' }

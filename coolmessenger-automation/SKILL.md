@@ -4,7 +4,7 @@ license: MIT
 description: >-
   교내 메신저 쿨메신저(CoolMessenger)로 이미 주고받은 메시지를 다룬다. 로컬 SQLite DB를 읽어 받은·보낸 메시지를 상대·시작 일시·문구로 조회하고, 회신 내용을 정리하며, 받은 메시지의 첨부파일을 내려받고, 회신 작성 창과 새 메시지 작성 창을 채워 보낸다(보내기는 사용자가 발송에 동의했을 때). 다음 요청에 사용한다. "○○ 선생님과 주고받은 메시지 찾아 줘", "선생님들 답장 왔는지 봐 줘", "회신 취합해 줘", 대상자 명단과 대조한 회신자·미회신자 구분, "첨부파일 다 받아서 정리해 줘", "○○ 선생님이 보낸 파일 받아 줘", 받은 메시지의 첨부파일 내려받기, 받은·보낸 메시지 검색·내보내기, 지정한 사람의 최근 메시지에 회신 보내기 준비, 여러 사람에게 같은 안내문을 한 통씩 따로 보내기(개별 발송, 사람마다 다른 파일 첨부), 이전에 보낸 메시지의 받는사람에게 새 메시지 보내기([전체 회신]으로 받는사람 재사용), 받은 메시지를 다른 선생님들도 함께 받았는지 확인, "○○ 선생님 지금 자리비움이야?" 같은 접속 상태 확인. 보낼 문안을 새로 쓰는 일은 이 스킬의 범위 밖이다. 교내 조직도를 내선번호·소속 포함 CSV로 저장해 줘, 조직도 내보내기, 내선번호 명단 만들어 줘. CoolMessenger, message search, read replies, reply tracking, download received attachments, send individually, message database, org chart export, extension list.
 metadata:
-  version: "1.10.0"
+  version: "1.10.1"
 ---
 
 # 쿨메신저 자동화
@@ -100,6 +100,10 @@ python scripts/cm_export.py --sent --since 2026-09-01 --format json
 ## 2. 받은 메시지 첨부파일 내려받기
 
 회신이든 아니든 메시지 관리함의 받은 메시지라면 똑같이 내려받는다. 회신 첨부 수합은 그 대표 용례다.
+
+**창을 조작하기 전에 이미 받아 둔 파일인지 먼저 본다.** `cm_export.py`의 `첨부` 칸에서 파일명을 얻고, 해당 업무 폴더
+(해당 업무 폴더의 정해진 위치)와 `DownPath`에서 그 이름을 찾는다. 같은 이름·같은 시기 파일이 있으면 내려받지 않고 그
+파일을 쓴다. 지난 대화에서 받아 둔 경우가 흔하다(2026-11-24 전보 안내 첨부 2건이 10/30에 이미 업무 폴더에 있었다). → 사례
 대상은 첨부파일명 패턴 `-Match`로 고르고, `-From`을 주면 보낸사람 이름에 그 문구가 들어간 메시지만 남긴다(`-From`의 `*`·`[` 등은 글자 그대로 본다).
 특정인이 보낸 첨부를 다 받으려면 `-Match '*' -From <이름>`이다. 파일명을 좁히고 싶으면 먼저
 `cm_export.py --from <보낸사람> --since <날짜>`로 `첨부` 칸의 파일명을 확인한다.
@@ -250,6 +254,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/cm_send_new.ps1 `
 - 받는사람은 이름 라벨 + 바로 뒤 형제 `Button 'delete'`(id 8010, **모두 같은 id**라 `WM_COMMAND` 불가) 쌍이다. 그 hwnd에 `BM_CLICK`.
 - **받는사람 칸이 스크롤돼 안 보이는(`IsWindowVisible` false) 항목은 `BM_CLICK`이 무시된다.** 보이는 것부터 지우면 뒤 항목이 올라오니, 보이는 것만 누르는 루프를 여러 번 돌린다.
 - 원 메시지에 **참조로 넣었던 사람(예: 부장)도 받는사람에 섞여** 들어온다.
+- **사람을 더하려면** 작성 창 [받는사람] 버튼(`PostMessage BM_CLICK`)으로 `사용자 선택` 창을 연다. 왼쪽 조직도 트리(id 1400)에서 `Find-CMPerson` → `Invoke-CMTreeDoubleClick`하면 오른쪽 `선택된 사람` 트리(id 1401)에 붙고, 1401을 `Get-CMTreeItems`로 읽어 확인한 뒤 [확인](`WM_COMMAND` 3007)을 누른다(2026-11-23 실측, 16명 + 2명 추가 발송).
+- 첨부가 4개를 넘으면 라벨 칸이 스크롤돼 뒤쪽 첨부 라벨은 `IsWindowVisible`가 false다. 첨부 검증은 보임 여부 없이 `파일명 (NN KB)` 글자로 한다. `cm_send_new.ps1 -Attach`는 여러 파일을 받는다(스크립트 안에서 배열로 넘김. `pwsh -File`로는 배열이 안 넘어가니 래퍼에서 `& .\scripts\cm_send_new.ps1 @args` 꼴로 부른다).
 - 본문은 CEF를 클릭 → Ctrl+A → Ctrl+V로 인용문째 교체. 제목(`Edit`)은 클릭 → Ctrl+A → 붙여넣기(회색으로 보여도 실제로 들어간다, `tbl_send.Title`로 확인).
 - 첨부: [파일첨부]를 `PostMessage BM_CLICK`(모달이라 `SendMessage` 금지) → "열기" 창 `Edit id=1148`에 따옴표 경로 `WM_SETTEXT` → `WM_COMMAND 1`. 작성 창 하단에 `파일명 (NN KB)` 라벨이 생기면 성공.
 - 받는사람 수를 셀 때 **첨부 라벨도 `이름(…)` 패턴 + `delete` 형제를 가져 받는사람으로 오인**된다. 확장자로 제외한다.

@@ -45,7 +45,7 @@ def table(mon, wed):
 TABLES = {
     "1-1": table({1: ("국어\n이*수", "내용")}, {1: ("영어\n홍*동", "변경"), 2: ("음악\n박*호", "변경")}),
     "1-2": table({3: ("영어\n홍*동", "내용")}, {1: ("정보\n최*진\n정보실", "변경")}),
-    "3-2": table({4: ("영어\n홍*동\n영어실", "내용")}, {}),
+    "3-2": table({4: ("영어\n홍*동\n영어실", "내용")}, {1: ("수학\n이*수", "내용")}),
 }
 MON = dt.date(2026, 11, 16)
 WED = dt.date(2026, 11, 18)
@@ -117,6 +117,44 @@ class PureTests(unittest.TestCase):
         self.assertEqual(comci.calendar_note(rows, dt.date(2026, 11, 19)), "대학수학능력시험(휴업일), 휴일")
         self.assertEqual(comci.calendar_note(rows, MON), "")
 
+    def test_mask_name_empty(self):
+        with self.assertRaises(ValueError):
+            comci.mask_name("  ")
+
+    def test_parse_date(self):
+        today = dt.date(2026, 11, 24)
+        self.assertEqual(comci.parse_date("2026-12-01", today), dt.date(2026, 12, 1))
+        self.assertEqual(comci.parse_date("12-1", today), dt.date(2026, 12, 1))
+        # 연말에 월-일만 넣으면 가까운 다음 해로
+        self.assertEqual(comci.parse_date("01-04", dt.date(2026, 12, 29)), dt.date(2027, 1, 4))
+        # 연초에 지난 12월을 넣으면 지난해로
+        self.assertEqual(comci.parse_date("12-30", dt.date(2027, 1, 2)), dt.date(2026, 12, 30))
+        for bad in ("2026-13-01", "13-40", "내일", "2026/12/01"):
+            with self.assertRaises(ValueError):
+                comci.parse_date(bad, today)
+
+    def test_read_text_any_cp949(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            f = Path(tmp) / "memo.txt"
+            f.write_bytes(MEMO.encode("cp949"))
+            self.assertEqual(comci.parse_memo(comci.read_text_any(f))["월"], [(3, "1-2"), (4, "3-2")])
+
+    def test_grade_empty_day(self):
+        """3학년만 빈 날(3학년 고사일 등): 3학년 수업은 '빠진 수업'이 아니라 따로 적는다."""
+        t = dict(TABLES)
+        t["3-2"] = table({}, {})
+        res = comci.analyze(t, MON, "홍*동", comci.parse_memo(MEMO))
+        self.assertFalse(res["all_empty"])
+        self.assertEqual(res["empty_grades"], ["3"])
+        self.assertEqual(res["removed"], [])
+        self.assertEqual(res["removed_blank"], [(4, "3-2")])
+        text = comci.render(MON, res, teacher="홍길동", school="가상중학교", modified="",
+                            fetched=dt.datetime(2026, 11, 16, 9, 0), note="", all_changes=False)
+        self.assertIn("3학년은 전 학급 시간표가 비어 있습니다", text)
+        self.assertIn("3학년 시간표가 비어 없어진 수업: 4교시 3-2", text)
+        self.assertNotIn("빠진 수업:", text)
+        self.assertNotIn("정규 시간표와 같습니다", text)
+
 
 class CliTests(unittest.TestCase):
     def run_cli(self, *args):
@@ -142,6 +180,24 @@ class CliTests(unittest.TestCase):
         r = self.run_cli("--date", "2026-11-21")
         self.assertEqual(r.returncode, 0)
         self.assertIn("SKIP 2026-11-21(토)", r.stdout)
+
+    def test_bad_date_exit_2(self):
+        r = self.run_cli("--date", "2026-02-30")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("ERROR 입력 오류", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
+    def test_unreadable_memo_warns_and_continues(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "dump.json"
+            src.write_text(json.dumps({"modified": "x", "tables": TABLES}, ensure_ascii=False), encoding="utf-8")
+            memo = Path(tmp) / "memo.txt"
+            memo.write_bytes(b"\xff\xfe\x81\x81\xc8")     # UTF-8도 CP949도 아님
+            r = self.run_cli("--from-json", str(src), "--date", "2026-11-18", "--teacher", "홍길동",
+                             "--memo", str(memo), "--calendar", str(Path(tmp) / "none.csv"))
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("WARN 정규 시간표", r.stderr)
+            self.assertIn("읽지 못해 비교하지 않았습니다", r.stdout)
 
     def test_missing_school_or_teacher_exits_2(self):
         import os

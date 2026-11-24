@@ -12,13 +12,14 @@
 
 학교와 교사는 인자(--school·--region·--teacher)나 환경 변수(COMCI_SCHOOL·COMCI_REGION·COMCI_TEACHER)로 준다.
 
-출력 줄: SAVED <경로> / SKIP <사유>. 종료 코드: 0 정상, 1 조회 실패, 2 학교·교사 미지정, 3 조회 범위 밖 날짜.
+출력 줄: SAVED <경로> / SKIP <사유>. 종료 코드: 0 정상, 1 조회 실패, 2 입력 오류(학교·교사 미지정·날짜), 3 조회 범위 밖 날짜.
 """
 from __future__ import annotations
 
 import argparse
 import datetime as dt
 import csv
+import io
 import json
 import os
 import re
@@ -41,9 +42,44 @@ def label(d: dt.date) -> str:
 
 def mask_name(name: str) -> str:
     """컴시간알리미는 교사 이름 가운데를 가린다: 홍길동 -> 홍*동, 남궁민수 -> 남**수."""
+    name = name.strip()
+    if not name:
+        raise ValueError("교사 이름이 비어 있습니다")
     if len(name) <= 2:
         return name[0] + "*"
     return name[0] + "*" * (len(name) - 2) + name[-1]
+
+
+def parse_date(s: str, today: dt.date) -> dt.date:
+    """'YYYY-MM-DD' 또는 'MM-DD'. MM-DD는 오늘과 가장 가까운 해로 붙인다(12월 말에 '01-04' -> 다음 해)."""
+    s = s.strip()
+    if re.fullmatch(r"\d{4}-\d{1,2}-\d{1,2}", s):
+        y, m, d = map(int, s.split("-"))
+        try:
+            return dt.date(y, m, d)
+        except ValueError:
+            raise ValueError(f"없는 날짜입니다: {s}") from None
+    if re.fullmatch(r"\d{1,2}-\d{1,2}", s):
+        m, d = map(int, s.split("-"))
+        cands = []
+        for y in (today.year - 1, today.year, today.year + 1):
+            try:
+                cands.append(dt.date(y, m, d))
+            except ValueError:   # 2월 29일 등
+                pass
+        if not cands:
+            raise ValueError(f"없는 날짜입니다: {s}")
+        return min(cands, key=lambda c: abs((c - today).days))
+    raise ValueError(f"날짜 형식은 YYYY-MM-DD 또는 MM-DD입니다: {s}")
+
+
+def read_text_any(path: Path) -> str:
+    """UTF-8(BOM 포함)을 먼저, 안 되면 CP949로 읽는다. 둘 다 안 되면 UnicodeDecodeError."""
+    raw = path.read_bytes()
+    try:
+        return raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return raw.decode("cp949")
 
 
 def parse_memo(text: str) -> dict[str, list[tuple[int, str]]]:
@@ -100,6 +136,7 @@ def analyze(tables: dict, d: dt.date, teacher_mask: str,
     """
     mine, changes, empty_classes, total_classes = [], [], 0, 0
     found_day = False
+    grade_filled: dict[str, int] = {}     # 학년별 채워진 칸 수(학년 전체가 빈 날 판별)
     for cls, rows in tables.items():
         if not rows:
             continue
@@ -126,17 +163,24 @@ def analyze(tables: dict, d: dt.date, teacher_mask: str,
                 changes.append({"period": per, "class": cls, "subject": subj, "teacher": teacher})
         if filled == 0:
             empty_classes += 1
+        g = cls.split("-")[0]
+        grade_filled[g] = grade_filled.get(g, 0) + filled
     if not found_day:
         return {"found": False}
     mine.sort(key=lambda x: (x["period"], x["class"]))
     changes.sort(key=lambda x: (x["class"], x["period"]))
+    all_empty = total_classes > 0 and empty_classes == total_classes
+    empty_grades = [] if all_empty else sorted(g for g, n in grade_filled.items() if n == 0)
     result = {"found": True, "mine": mine, "changes": changes,
-              "all_empty": total_classes > 0 and empty_classes == total_classes}
+              "all_empty": all_empty, "empty_grades": empty_grades}
     if regular is not None:
         reg = set(regular.get(WEEKDAYS[d.weekday()], []))
         now = {(x["period"], x["class"]) for x in mine}
+        removed = sorted(reg - now)
         result["added"] = sorted(now - reg)
-        result["removed"] = sorted(reg - now)
+        # 학년 전체가 빈 날(그 학년 고사일 등)에 빠진 수업은 따로 둔다.
+        result["removed"] = [x for x in removed if x[1].split("-")[0] not in empty_grades]
+        result["removed_blank"] = [x for x in removed if x[1].split("-")[0] in empty_grades]
     return result
 
 
@@ -158,8 +202,11 @@ def render(d: dt.date, res: dict, *, teacher: str, school: str, modified: str,
     L.append(f"1. {teacher} 선생님 수업")
     if res["all_empty"]:
         L.append("그날은 전 학급 시간표가 비어 있습니다(휴업일·고사일 등).")
-    elif not res["mine"]:
-        L.append("수업이 없습니다.")
+    else:
+        for g in res.get("empty_grades", []):
+            L.append(f"{g}학년은 전 학급 시간표가 비어 있습니다(고사일·현장체험학습 등).")
+        if not res["mine"]:
+            L.append("수업이 없습니다.")
     for x in res["mine"]:
         room = f", {x['room']}" if x["room"] else ""
         mark = " (변경)" if x["changed"] else ""
@@ -169,13 +216,19 @@ def render(d: dt.date, res: dict, *, teacher: str, school: str, modified: str,
     if res["all_empty"]:
         L.append("수업이 없는 날이라 비교하지 않았습니다.")
     elif "added" not in res:
-        L.append("정규 시간표 파일이 없어 비교하지 않았습니다.")
-    elif not res["added"] and not res["removed"]:
-        L.append("정규 시간표와 같습니다.")
+        L.append("정규 시간표 파일을 읽지 못해 비교하지 않았습니다.")
     else:
         fmt = lambda xs: ", ".join(f"{p}교시 {c}" for p, c in xs) or "없음"
-        L.append(f"새로 생긴 수업: {fmt(res['added'])}")
-        L.append(f"빠진 수업: {fmt(res['removed'])}")
+        blank = res.get("removed_blank", [])
+        if not res["added"] and not res["removed"]:
+            if not blank:
+                L.append("정규 시간표와 같습니다.")
+        else:
+            L.append(f"새로 생긴 수업: {fmt(res['added'])}")
+            L.append(f"빠진 수업: {fmt(res['removed'])}")
+        if blank:
+            grades = "·".join(res.get("empty_grades", []))
+            L.append(f"{grades}학년 시간표가 비어 없어진 수업: {fmt(blank)}")
     L.append("")
     L.append("3. 학교 전체 변경")
     if not res["changes"]:
@@ -205,6 +258,17 @@ def week_option(options: list[tuple[str, str]], d: dt.date) -> str | None:
             if a <= d <= b:
                 return value
     return None
+
+
+# 학급 c의 표가 뜨고, 그 표 머리에 원하는 주의 날짜 칸(예: '월(30)')이 있을 때 참.
+# 주(#nal)를 바꾼 직후 지난주 표가 남아 있어도 통과하지 않게 날짜까지 본다.
+READY_JS = r"""([c, want])=>{
+  const [g, b] = c.split('-');
+  const re = new RegExp('제\\s*'+g+'\\s*학년\\s*'+b+'\\s*반\\s*시간표');
+  const tbs=[...document.querySelectorAll('table')].filter(t=>re.test(t.innerText) && t.rows.length>3);
+  const t=tbs[tbs.length-1]; if(!t) return false;
+  return [...t.rows].some(r=>[...r.cells].some(td=>td.innerText.trim()===want));
+}"""
 
 
 TABLE_JS = r"""()=>{
@@ -240,13 +304,14 @@ def fetch(d: dt.date, school: str, school_full: str, region: str, timeout_ms: in
             if pg.eval_on_selector("#nal", "e=>e.value") != val:
                 pg.select_option("#nal", val)
                 pg.wait_for_timeout(2000)
+            want = f"{WEEKDAYS[d.weekday()]}({d.day})"    # 그 주 표가 맞는지 확인할 머리 칸
             classes = [v for v in pg.eval_on_selector_all("#ba option", "els=>els.map(e=>e.value)") if v]
+            if not classes:
+                raise RuntimeError("학급 선택지(#ba)가 비어 있습니다")
             tables = {}
             for cls in classes:
                 pg.select_option("#ba", cls)
-                pg.wait_for_function(
-                    "c=>[...document.querySelectorAll('table')].some(t=>t.innerText.includes('제 '+c.split('-')[0]+' 학년 '+c.split('-')[1]+' 반 시간표'))",
-                    arg=cls)
+                pg.wait_for_function(READY_JS, arg=[cls, want])
                 pg.wait_for_timeout(300)
                 tables[cls] = pg.evaluate(TABLE_JS)
             body = pg.inner_text("body")
@@ -279,27 +344,39 @@ def main(argv=None) -> int:
     a = ap.parse_args(argv)
 
     today = dt.date.today()
-    if a.date:
-        s = a.date if len(a.date) > 5 else f"{today.year}-{a.date}"
-        d = dt.date.fromisoformat(s)
-    else:
-        d = today
+    try:
+        d = parse_date(a.date, today) if a.date else today
+    except ValueError as e:
+        print(f"ERROR 입력 오류: {e}", file=sys.stderr)
+        return 2
     days = [d - dt.timedelta(days=d.weekday()) + dt.timedelta(days=i) for i in range(5)] if a.week else [d]
     if not a.week and d.weekday() >= 5:
         print(f"SKIP {label(d)} (주말)")
         return 0
 
-    if not a.teacher or not (a.school or a.from_json):
+    if not a.teacher.strip() or not (a.school.strip() or a.from_json):
         print("ERROR 학교(--school 또는 COMCI_SCHOOL)와 교사 이름(--teacher 또는 COMCI_TEACHER)을 지정하세요.", file=sys.stderr)
+        return 2
+    try:
+        mask = mask_name(a.teacher)
+    except ValueError as e:
+        print(f"ERROR 입력 오류: {e}", file=sys.stderr)
         return 2
     a.school_full = a.school_full or a.school
     memo_path = resolve(a.memo, d) if a.memo else None
-    regular = parse_memo(memo_path.read_text(encoding="utf-8")) if memo_path and memo_path.is_file() else None
+    regular = None
+    if memo_path and memo_path.is_file():
+        try:
+            regular = parse_memo(read_text_any(memo_path))
+        except (OSError, UnicodeDecodeError) as e:
+            print(f"WARN 정규 시간표 파일을 읽지 못해 정규 시간표 비교를 건너뜀: {memo_path}: {e}", file=sys.stderr)
     cal_path = resolve(a.calendar, d) if a.calendar else None
     cal_rows = []
     if cal_path and cal_path.is_file():
-        with open(cal_path, encoding="utf-8-sig", newline="") as f:
-            cal_rows = list(csv.DictReader(f))
+        try:
+            cal_rows = list(csv.DictReader(io.StringIO(read_text_any(cal_path), newline="")))
+        except (OSError, UnicodeDecodeError, csv.Error) as e:
+            print(f"WARN 학사일정을 읽지 못함: {cal_path}: {e}", file=sys.stderr)
 
     fetched = dt.datetime.now()
     try:
@@ -317,7 +394,6 @@ def main(argv=None) -> int:
     if a.dump:
         Path(a.dump).write_text(json.dumps({"modified": modified, "tables": tables}, ensure_ascii=False), encoding="utf-8")
 
-    mask = mask_name(a.teacher)
     texts = []
     for day in days:
         res = analyze(tables, day, mask, regular)
