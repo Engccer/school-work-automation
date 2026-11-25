@@ -11,10 +11,10 @@
 | **neis-automation** (나이스) | 업무포털을 거쳐 나이스에 진입하고, EVPN 원격 접속을 지원한다. 근무상황(육아시간, 연가, 조퇴 등)과 출장 신청, 외부강의 신고와 현황 조회, 정기고사 일괄채점과 문항 통계, 학기 시작 선행작업(성취기준, 수행평가 영역, 반영비율 등록), 동아리 이수시간 확인과 특기사항 입력, 학교생활기록부 독서활동상황과 교과 세특 화면 입력을 맡는다. 급여명세서 내려받기와 CSV 검산, 정부24 교육제증명(재직증명서 등) 발급, 나이스광장 질의등록, 상신함 결재 내역 추출, 연수 이력과 직무연수 이수 시간 조회도 포함한다. |
 | **k-edufine-automation** (K-에듀파인) | 업무포털을 거쳐 K-에듀파인에 진입한다. 결재대기 공문의 과제카드 지정과 문서처리, 공문 본문과 첨부의 PC저장(ODT 텍스트 추출 포함), 신규 기안 작성부터 수신자와 결재경로 지정, 결재올림(대외시행, 내부결재)까지 다룬다. 문서등록대장 선례 조회, 완료 문서의 공개구분 수정, 사용자지원서비스 질의등록도 맡는다. |
 | **kyodetong-submit** (교데통) | 교데통(교육행정데이터통합관리) 데이터취합에서 접수, 파일 첨부, 임시저장, 내부승인 결재 상신 또는 K-에듀파인 전자결재 연계기안, 완료 확인, 제출취소와 회수까지 처리한다. |
-| **coolmessenger-automation** (쿨메신저) | 교내 메신저 쿨메신저(CoolMessenger Gentoo)의 로컬 SQLite DB에서 받은 메시지와 보낸 메시지를 상대, 시작 일시, 문구로 직접 조회한다. 대상자 명단과 대조한 회신 정리, 받은 메시지 첨부파일 내려받기, 회신 작성 창과 이전 받는사람을 재사용한 새 메시지 작성 창 채우기(발송은 사용자 확인 후), 함께 받은 수신자 대조, 조직도 내보내기와 접속 상태 확인을 맡는다. 브라우저가 아니라 PowerShell Win32 창 조작으로 동작한다. |
+| **coolmessenger-automation** (쿨메신저) | 교내 메신저 쿨메신저(CoolMessenger Gentoo)의 로컬 SQLite DB에서 받은 메시지와 보낸 메시지를 상대, 시작 일시, 문구로 직접 조회한다. 대상자 명단과 대조한 회신 정리, 받은 메시지 첨부파일 내려받기, 회신 작성 창과 이전 받는사람을 재사용한 새 메시지 작성 창 채우기, 함께 받은 수신자 대조, 조직도 내보내기와 접속 상태 확인을 맡는다. 브라우저가 아니라 PowerShell Win32 창 조작으로 동작한다. |
 | **alimjang-automation** (알림장) | 교직원 공용 알림장관리 3.0의 날짜별, 부서별 전달사항을 학교 서버 공유 DB(FoxPro DBF)에서 읽기 전용으로 꺼내 날짜 폴더에 텍스트로 정리한다. 첨부 수집과 텍스트 추출, 요약, 키워드, 부서, 기간, 지난 학년도 검색, 작업 스케줄러를 이용한 평일 아침 자동 정리, 특별실 수리 신청 입력을 지원한다. |
 | **ealimi-points** (e알리미 상벌점) | e알리미 상벌점V.2에서 상점과 벌점 항목, 배점을 조회하고 사용자가 지정한 학생의 상벌점을 단건이나 여러 명 단위로 등록한다. 알림 발송 설정을 확인하며, 등록 전 기존 기록 조회와 등록 후 부여내역 검증까지 포함한다. 가정통신문 발송은 다루지 않는다. |
-| **comcigan-timetable** (컴시간 시간표) | 컴시간알리미 학교 시간표를 화면 없는 Edge로 읽어 교사 본인의 그날 수업, 정규 시간표와 비교해 새로 생기거나 빠진 수업, 학교 전체 변경 칸 수를 텍스트로 정리한다. 알림장 평일 아침 자동 정리에 붙여 같은 날짜 폴더에 저장할 수 있다. |
+| **comcigan-timetable** (컴시간 시간표) | 컴시간알리미 학교 시간표를 화면 없는 Edge로 읽어 교사 본인의 그날 수업과 학교 전체 변경 칸 수를 텍스트로 정리한다. 교사의 정규 시간표 파일을 함께 주면 새로 생기거나 빠진 수업도 알려 준다. 알림장 평일 아침 자동 정리에 붙여 같은 날짜 폴더에 저장할 수 있다. |
 | **school-work-setup** (설치 점검) | 위 일곱 스킬의 기본 실행 요건과 선택 기능에 필요한 도구를 읽기 전용으로 점검한다. 알림장 기본 기능과 형식별 첨부 읽기의 연결, 검증 상태를 구분해 보고한다. |
 
 K-에듀파인, 쿨메신저, 알림장, 컴시간 스크립트에는 실제 업무 시스템이나 앱을 건드리지 않고 동작을 확인하는 단위 시험이 각 스킬의 `scripts/tests/`에 들어 있다.
@@ -23,7 +23,7 @@ K-에듀파인, 쿨메신저, 알림장, 컴시간 스크립트에는 실제 업
 
 - **코딩 에이전트 CLI**: Claude Code 등 스킬(`SKILL.md`)을 인식하는 에이전트.
 - **Playwright MCP 서버**(`npx @playwright/mcp@latest`)와 크롬: 나이스, K-에듀파인, 교데통, e알리미 네 스킬의 기본 브라우저다. 에이전트 설정에 MCP 서버로 등록한다. 브라우저 제어 확장(Claude in Chrome에서 검증)도 쓸 수 있지만, 관리 정책으로 개발자 도구가 막힌 크롬에서는 연결되지 않는다. 쿨메신저와 알림장 스킬은 브라우저를 쓰지 않으며, 컴시간 스킬은 Python `playwright` 패키지로 설치된 Microsoft Edge를 화면 없이 띄운다.
-- **Windows**: K-에듀파인의 결재, 기안 문서 창은 브라우저가 아니라 임베디드 IE 기반 네이티브 앱이라 동봉된 PowerShell MSHTML 브리지 스크립트로 제어한다. 쿨메신저 스킬도 Win32 메시지와 마우스 클릭으로 창을 조작하고, 알림장 스킬은 학교 서버 공유 폴더(UNC)와 작업 스케줄러를 쓴다. 이 세 스킬은 Windows 전용이며, 나이스와 교데통 스킬은 브라우저 조작만 쓴다.
+- **Windows**: K-에듀파인의 결재·기안 창은 Windows 앱으로 열리며 동봉된 PowerShell 스크립트로 조작한다. 교데통 내부승인은 브라우저에서 끝나지만, K-에듀파인 전자결재로 연계하면 같은 Windows 기안 창을 쓴다. 나이스에 학교 밖에서 EVPN으로 접속할 때는 별도 VPN 클라이언트가 필요하다. 쿨메신저 창 조작에는 Windows와 **PowerShell 7**(`pwsh`)이 필요하다. 알림장은 Windows에서 학교 서버 공유 폴더와 작업 스케줄러를 쓴다.
 - **Python 3**: 나이스 급여명세서 CSV 변환(`openpyxl`), 쿨메신저 DB 내보내기(표준 라이브러리만 사용), 알림장 DB 읽기(`dbfread`)와 첨부 추출, 컴시간 시간표 조회(`playwright`)에 쓴다. 알림장 기본 조회와 첨부 저장에는 한글 처리 도구가 필요하지 않다. 첨부 내용 읽기는 선택 기능이며, 다루려는 형식을 지원하는 도구를 권장한다. 예를 들어 HWPX 읽기는 [hwpx-tomd](https://github.com/Engccer/hwpx-tomd), HWP 변환과 HWPX 읽기는 [hwpx-automation](https://github.com/Engccer/hwpx-automation)을 쓸 수 있다. HWP 파일은 `hwpx-tomd`만으로 읽을 수 없다.
 - **교육행정 전자서명 인증서**: 나이스, K-에듀파인, 교데통에서 쓴다. 로그인은 항상 사용자가 직접 한다.
 
@@ -40,8 +40,8 @@ K-에듀파인, 쿨메신저, 알림장, 컴시간 스크립트에는 실제 업
 - **인증서 비밀번호와 자격증명 입력은 절대 자동화하지 않는다.** 로그인은 교사 본인이 직접 한다.
 - **학교와 교사 이름 같은 개인 설정은 스킬 파일에 적지 않는다.** 컴시간 스킬은 인자나 환경 변수로 받는다.
 - **공유 서버 DB(알림장)에는 직접 쓰지 않는다.** 읽기는 임시 사본에서 하고, 쓰기는 앱 화면으로만 한다.
-- **비가역 조작(상신, 문서처리, 제출, 메시지 발송)은 사용자 승인 뒤에만 실행한다.** 자동화는 폼 채우기와 검증까지 진행하고, 확정 버튼 앞에서 요약해 확인받는다. 상벌점은 대상, 발생일, 항목, 점수, 알림 설정이 모두 확정된 요청일 때만 등록하며, 등록 전 기존 기록과 등록 후 부여내역을 대조한다.
-- **성적과 공문 등 민감한 화면의 스크린샷을 파일로 저장하지 않는다.**
+- **비가역 조작(상신, 문서처리, 제출, 메시지 발송)은 사용자 승인 뒤에만 실행한다.** 상신·문서처리·제출은 확정 전에 내용을 요약해 확인받는다. 쿨메신저는 초안을 요청하면 작성에서 멈춘다. 수신자와 본문을 지정해 발송을 요청하면 에이전트가 둘을 확인한 뒤 직접 보낸다. 상벌점은 대상, 발생일, 항목, 점수, 알림 설정이 모두 확정된 요청일 때만 등록하며, 등록 전 기존 기록과 등록 후 부여내역을 대조한다.
+- 나이스는 성적·급여·증명서 등 민감한 화면의 스크린샷을 파일로 저장하지 않는다. K-에듀파인도 브라우저에서 공문 화면을 파일로 저장하지 않는다. Windows 창을 캡처할 때는 임시 폴더에 PNG 파일을 만들며, 스킬 지침에 따라 판독 직후 지운다.
 - **스킬 문서에 개인이나 학교를 식별할 수 있는 정보를 기록하지 않는다.** 교사와 학생 이름, 학교명, 문서번호, 계정 등은 일반화해서 갱신한다.
 
 ## 설치
@@ -50,7 +50,7 @@ K-에듀파인, 쿨메신저, 알림장, 컴시간 스크립트에는 실제 업
 npx skills add Engccer/school-work-automation -g
 ```
 
-설치한 뒤 에이전트에게 "학교 업무 자동화 스킬 쓸 준비 됐는지 봐 줘"라고 하면 `school-work-setup`이 요구사항을 점검한다. `npx`는 Node.js에 포함돼 있다. 필요한 스킬만 골라 쓸 수 있지만, 번들 안에서 서로 참조하는 스킬은 함께 설치한다. K-에듀파인과 교데통은 나이스 로그인 절차를, 교데통 전자결재 연계기안은 K-에듀파인 문서를 참조한다.
+설치한 뒤 에이전트에게 "학교 업무 자동화 스킬 쓸 준비 됐는지 봐 줘"라고 하면 `school-work-setup`이 요구사항을 점검한다. `npx`는 Node.js에 포함돼 있다. 필요한 스킬만 골라 쓸 수 있지만, 번들 안에서 서로 참조하는 스킬은 함께 설치한다. K-에듀파인과 교데통은 나이스 로그인 절차를, 교데통 전자결재 연계기안은 K-에듀파인 문서를 참조한다. 쿨메신저 창을 조작하려면 설치 점검 후 `pwsh --version`으로 PowerShell 7 설치 여부를 별도로 확인한다.
 
 알림장 한글 첨부 읽기는 권장 항목이다. 이미 쓸 수 있는 도구가 있으면 새로 설치하지 않는다. 대화형 작업은 에이전트가 쓸 수 있는 도구로 읽고, 예약 자동화는 연결해 검증한 도구만 쓴다. 도구가 없는 첨부는 원본을 저장하고 처리하지 못한 사유를 알린다. 자세한 기준은 [형식별 도구 선택과 자동화 연결](alimjang-automation/references/첨부-도구.md)을 참고한다.
 
@@ -66,15 +66,17 @@ MIT (c) 2026 Engccer
 
 ## English
 
-**school-work-automation** was developed to improve the accessibility of school administrative work for teachers with disabilities. It is a skill bundle that automates the administrative systems used by teachers in Korean public schools with a coding agent (Claude Code and similar): **NEIS** (attendance/leave requests, exam grading and item statistics, external-lecture reports, club, reading, and subject-comment records, payslip download with CSV reconciliation, employment certificates via Gov24), **K-EduFine** (approving incoming official documents, saving document bodies/attachments, drafting and submitting new official documents for external dispatch or internal approval, changing the public-disclosure status of completed documents), **Kyodetong** (the education-data collection platform: receive, attach, save, and submit through internal approval or K-EduFine e-approval), **CoolMessenger** (the in-school messenger: search sent and received messages and track replies straight from its local SQLite store, download attachments from received messages, and pre-fill replies; sending is left to the user), **Alimjang** (the staff notice-board program "알림장관리 3.0": read daily department announcements read-only from the school server's FoxPro DBF share, collect and summarize attachments, search past years, and run a weekday-morning digest via Task Scheduler), **e-Alimi points** (look up merit/demerit items and scores in e알리미's 상벌점V.2, register the points the user specifies, and verify the saved record), and **Comcigan timetable** (read the school timetable on 컴시간알리미 with headless Edge and report the teacher's classes for the day, differences from the regular timetable, and school-wide changes).
+**school-work-automation** was developed to improve the accessibility of school administrative work for teachers with disabilities. It is a skill bundle that automates the administrative systems used by teachers in Korean public schools with a coding agent (Claude Code and similar): **NEIS** (attendance/leave requests, exam grading and item statistics, external-lecture reports, club, reading, and subject-comment records, payslip download with CSV reconciliation, employment certificates via Gov24), **K-EduFine** (approving incoming official documents, saving document bodies/attachments, drafting and submitting new official documents for external dispatch or internal approval, changing the public-disclosure status of completed documents), **Kyodetong** (the education-data collection platform: receive, attach, save, and submit through internal approval or K-EduFine e-approval), **CoolMessenger** (the in-school messenger: search sent and received messages and track replies straight from its local SQLite store, download attachments from received messages, and draft replies or new messages), **Alimjang** (the staff notice-board program "알림장관리 3.0": read daily department announcements read-only from the school server's FoxPro DBF share, collect and summarize attachments, search past years, and run a weekday-morning digest via Task Scheduler), **e-Alimi points** (look up merit/demerit items and scores in e알리미's 상벌점V.2, register the points the user specifies, and verify the saved record), and **Comcigan timetable** (read the school timetable on 컴시간알리미 with headless Edge and report the teacher's classes for the day and the number of timetable changes across the school, with added and removed classes listed when the teacher supplies a regular timetable file).
 
 All seven skills were built and repeatedly field-tested by the author, a blind teacher, in real school work. They encode hard-won workarounds for these legacy systems: delayed dialog rendering, custom DIV dropdowns that reject direct form-value setting, calendar-only date fields, iframe file uploaders that need a `DataTransfer` bridge, and an MSHTML PowerShell bridge for K-EduFine's embedded-IE native document windows.
 
-**Requirements:** a coding agent CLI that recognizes skills, the Playwright MCP server (`npx @playwright/mcp@latest`) and Chrome for the web systems (NEIS, K-EduFine, Kyodetong, e-Alimi; a browser-control extension also works where Chrome management policy allows it; verified with Claude in Chrome), Windows with its built-in PowerShell (K-EduFine's native document windows and CoolMessenger's Win32 windows; the NEIS, Kyodetong and e-Alimi skills are browser-only), Python 3 for the helper scripts (the Comcigan skill also needs the `playwright` package and Microsoft Edge), and a Korean education digital certificate; login is always performed by the user, never automated.
+**Requirements:** The web systems (NEIS, K-EduFine, Kyodetong and e-Alimi) use a coding agent CLI that recognizes skills, the Playwright MCP server (`npx @playwright/mcp@latest`) and Chrome. A browser-control extension also works where Chrome management policy allows it (verified with Claude in Chrome). Teachers log in to the education portal with their own digital certificate. Off-campus NEIS access through EVPN requires a VPN client.
+
+K-EduFine approval and drafting windows require Windows. Kyodetong handles internal approvals in the browser, but its K-EduFine e-approval workflow opens a Windows drafting window. CoolMessenger uses Python 3 to read messages and requires PowerShell 7 (`pwsh`) on Windows to control the app. Alimjang uses Windows file shares and Task Scheduler. Other helper scripts also use Python 3. Comcigan requires the `playwright` package and Microsoft Edge.
 
 **Scope:** verified against the Seoul Metropolitan Office of Education environment (`sen.*` domains). The systems are nationwide; other provinces differ only in subdomains and screen details. CoolMessenger is a school-licensed product independent of the education office (verified on the Gentoo client), as is the Alimjang notice-board program. e-Alimi and Comcigan are nationwide services that schools subscribe to.
 
-**Safety principles:** credentials are never automated; irreversible actions (submit, approve, dispatch) run only after explicit user confirmation; screenshots of sensitive screens are never saved to disk; skill updates never record personal or school-identifying information.
+**Safety principles:** Teachers enter their own credentials and confirm submissions and approvals. For CoolMessenger, a draft request stops after composition. If the user specifies the recipients and message and asks for it to be sent, the agent checks both and sends it. NEIS does not save screenshots of sensitive data such as grades, payslips or certificates to disk. K-EduFine does not save browser screenshots of official documents. Its Windows capture tool writes a temporary PNG, and the skill instructs the agent to delete it immediately after reading it. Skill updates omit personal and school-identifying information.
 
 **Install:**
 
@@ -82,6 +84,6 @@ All seven skills were built and repeatedly field-tested by the author, a blind t
 npx skills add Engccer/school-work-automation -g
 ```
 
-After installing, the **school-work-setup** skill checks the requirements read-only and reports, per skill, what is ready and what is missing.
+After installing, the **school-work-setup** skill checks the requirements read-only and reports, per skill, what is ready and what is missing. To control CoolMessenger windows, also run `pwsh --version` to verify that PowerShell 7 is installed.
 
 **License:** MIT (c) 2026 Engccer
